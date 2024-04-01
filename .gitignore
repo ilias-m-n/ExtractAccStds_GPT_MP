@@ -1,0 +1,10 @@
+/.env
+/.idea/*
+/__pycache__/*
+/data/fs_examples/*
+/data/raw_files/*
+/data/input_file_ids/*
+/meta_files/*
+/schedules/*
+/utility/__pycache__/*
+/outputs/*
