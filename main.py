@@ -17,12 +17,13 @@ def read_meta_config():
         path_meta = os.path.join(os.getcwd(), 'meta_files', config._meta)
         with open(path_meta, 'rb') as file:
             meta = pickle.load(file)
+            print(f"\n\nReading meta file: {meta.filename}\n")
     else:
         # Read config file
         model = config._model
         min_ratio = config._min_ratio
         flag_incl_sentence = config._flag_incl_sentence
-        flag_user_assistant = config._flag_user_assstant
+        flag_user_assistant = config._flag_user_assistant
         flag_segmented = config._flag_segmented
         max_token_num = config._max_token_num
         overlay = config._overlay
@@ -30,6 +31,8 @@ def read_meta_config():
         file_input_file_ids = config._file_input_file_ids
         schedule_batch_size = config._schedule_batch_size
         max_tokens_allowed = config._max_tokens_allowed
+        gpt_source_keys = config._gpt_source_keys
+        gpt_answer_keys = config._gpt_answer_keys
 
         # Create new Meta object and schedule
         meta = Meta(uuid4(),
@@ -44,13 +47,13 @@ def read_meta_config():
                     file_fs_examples,
                     file_input_file_ids,
                     schedule_batch_size,
-                    max_tokens_allowed)
+                    max_tokens_allowed,
+                    gpt_source_keys,
+                    gpt_answer_keys)
 
-        meta_filename = f"meta_{meta.meta_id}_{meta.creation_datetime}.pkl"
-        path_meta = os.path.join(os.getcwd(), 'meta_files', meta_filename)
+        path_meta = os.path.join(os.getcwd(), 'meta_files', meta.filename)
         update_meta(path_meta, meta)
-        # with open(path_meta, 'wb') as file:
-        #     pickle.dump(meta, file)
+        print(f"\n\nCreated meta file: {meta.filename}\n")
 
     return meta, path_meta
 

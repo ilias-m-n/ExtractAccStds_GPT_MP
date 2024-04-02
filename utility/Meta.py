@@ -14,16 +14,20 @@ class Meta:
                  file_input_file_ids,
                  schedule_batch_size,
                  max_tokens_allowed,
+                 gpt_source_keys,
+                 gpt_answer_keys,
                  ):
         # Date and time in string
         self.creation_datetime = datetime.strftime("%Y-%m-%d-%H-%M")
         # ID
         self.meta_id = uuid
+        # Meta filename
+        self.filename = f"meta_{self.meta_id}_{self.creation_datetime}.pkl"
         # Model (gpt-3.5 vs gpt-4)
         self.model = model
         # Config flags
         self.flag_incl_sentence = flag_incl_sentence
-        self.flag_ua = flag_user_assistant
+        self.flag_user_assistant = flag_user_assistant
         self.flag_segmented = flag_segmented
         # Min. term occurrence ratio
         self.min_ratio = min_ratio
@@ -45,6 +49,7 @@ class Meta:
         # Prompt settings
         self.max_tokens_allowed = max_tokens_allowed
 
-        # Processing State
-        self.processed_batch_ids = []
+        # GPT Prompt Settings
+        self.gpt_source_keys = gpt_source_keys
+        self.gpt_answer_keys = gpt_answer_keys
 

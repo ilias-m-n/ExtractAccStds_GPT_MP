@@ -1,7 +1,7 @@
 import json
 import os
-import re
 import pickle
+import re
 from collections import Counter
 
 import pandas as pd
@@ -14,8 +14,8 @@ from tenacity import (
 )
 from tiktoken import get_encoding
 
-from . import text_cleaning as tc
 from . import Meta
+from . import text_cleaning as tc
 
 
 # Planning functions: Cost and Compute Time
@@ -23,6 +23,7 @@ from . import Meta
 def calc_price_gpt(num_files, avg_tok_size, num_segments, price, tokens_per_price=1000) -> float:
     price = num_files * num_segments * avg_tok_size / tokens_per_price * price
     return price
+
 
 def calc_price_gpt_one_example(token_length, price, tokens_per_price=1000) -> float:
     return token_length / tokens_per_price * price
@@ -148,7 +149,7 @@ def get_completion(client: OpenAI, messages: list[dict[str, str]], model: str = 
         content_filter: Omitted content due to a flag from our content filters
         null: API response still in progress or incomplete
             
-        -> response.choices[0].finish_reason
+        -> 'response.choices[0].finish_reason'
     """
     response = client.chat.completions.create(model=model, messages=messages, temperature=temp)
     return response
@@ -188,9 +189,123 @@ def prompt_gpt(client: OpenAI,
     output = get_completion(client, messages, model, temp)
     return output
 
+def partial_pivot(df: pd.DataFrame, id_col, sub_id_col, values_cols, other_cols):
+    pivot = df.pivot(index=id_col, columns=sub_id_col, values=values_cols)
+    df = df[other_cols].copy()
+    df.drop_duplicates(inplace=True)
+    pivot.columns = [f"{col}_{source}" for col, source in pivot.columns]
+    pivot.reset_index(inplace=True)
+    return pd.merge(df, pivot, on=id_col, how='inner')
 
-# FewShot Examples
-def prep_fs_examples(df, id_col, source_col, paragraph_col, sentence_col, standard_col, incl_sentence, flag_user_assistant,
+
+def process_gpt_output(chat_comp: ChatCompletion):
+    finish_reason = chat_comp.choices[0].finish_reason
+    answer = chat_comp.choices[0].message.content
+    comp_tokens = chat_comp.usage.completion_tokens
+    prompt_tokens = chat_comp.usage.prompt_tokens
+
+    return answer, finish_reason, prompt_tokens, comp_tokens
+
+
+def schedule_compute_cost(path_file):
+    return count_tokens(tc.clean_text(parse_txt(path_file)))
+
+
+def update_meta(path_meta: str, meta: Meta):
+    with open(path_meta, 'wb') as file:
+        pickle.dump(meta, file)
+
+
+def update_schedule(path_schedule: str, schedule: pd.DataFrame):
+    schedule.to_csv(path_schedule, index=False)
+
+
+def get_num_batches_to_run(prompt, lower_bound, upper_bound):
+    while True:
+        try:
+            user_input = input(prompt)
+            if str(user_input) == 'all':
+                return upper_bound
+            number = int(user_input)
+            if lower_bound <= number <= upper_bound:
+                return number
+            else:
+                print(f"Please enter a number within the bounds ({lower_bound}, {upper_bound}).")
+        except ValueError:
+            print("The input is not a valid integer. Please try again.")
+
+
+def get_num_workers(prompt, lower_bound, upper_bound):
+    while True:
+        try:
+            user_input = input(prompt)
+            number = int(user_input)
+            if lower_bound <= number <= upper_bound:
+                return number
+            else:
+                print(f"Please enter a number within the bounds ({lower_bound}, {upper_bound}).")
+        except ValueError:
+            print("The input is not a valid integer. Please try again.")
+
+def read_character_and_decide():
+    while True:  # Keep asking until we get a 'y' or 'n'
+        print("\tWould you like to start processing now?")
+        user_input = input("\tEnter 'y' or 'n': ").lower()  # Convert to lowercase to handle 'Y' or 'N'
+        if user_input == 'y':
+            return True
+        elif user_input == 'n':
+            return False
+        else:
+            print("\tInvalid input. Please enter 'y' or 'n'.")
+
+def all_keys_present(dictionary, keys):
+    return all(key in dictionary for key in keys)
+
+def expand_output(output, source_keys=None, answer_keys=None):
+    """
+    answer_codes:
+        0: answer readable
+        1: answer not correctly formated in json
+        2: not all source keys present
+        3: not all answers keys present
+    """
+    if answer_keys is None:
+        answer_keys = ['sentence', 'term']
+    if source_keys is None:
+        source_keys = ['audit', 'notes']
+
+    out_dict = None
+    answer_code = 0
+    len_answer = len(source_keys) * len(answer_keys)
+    answers = list()
+
+    # check output format
+    try:
+        out_dict = json.loads(output)
+    except ValueError:
+        answer_code = 1
+        return [None, ] * len_answer, answer_code
+
+    # check whether all source keys present in dict
+    if not all_keys_present(out_dict, source_keys):
+        answer_key = 2
+
+    # check whether all answer keys present in answer dicts
+    if not all(all_keys_present(out_dict[source], answer_keys) for source in source_keys):
+        answer_key = 3
+
+    # extract answers
+    for s in source_keys:
+        source = out_dict.get(s, None)
+        if source:
+            for a in answer_keys:
+                answers.append(source.get(a, None))
+
+    return *answers, answer_code
+
+# Task specific
+def prep_fs_examples(df, id_col, source_col, paragraph_col, sentence_col, standard_col, incl_sentence,
+                     flag_user_assistant,
                      flag_segmented, base_prompt=""):
     user_assistant = None
     prompt_examples = ""
@@ -211,7 +326,6 @@ def prep_fs_examples(df, id_col, source_col, paragraph_col, sentence_col, standa
                                                             standard_col, incl_sentence, base_prompt)
 
     return user_assistant, prompt_examples
-
 
 def get_user_assistant_context(df, id_col, source_col, paragraph_col, sentence_col, standard_col, incl_sentence):
     user_assistant = []
@@ -304,68 +418,3 @@ def get_examples_prompt_segmented(df, source_col, paragraph_col, sentence_col, s
         examples += json.dumps(sentence_std) + '\n'
 
     return examples
-
-
-def partial_pivot(df: pd.DataFrame, id_col, sub_id_col, values_cols, other_cols):
-    pivot = df.pivot(index=id_col, columns=sub_id_col, values=values_cols)
-    df = df[other_cols].copy()
-    df.drop_duplicates(inplace=True)
-    pivot.columns = [f"{col}_{source}" for col, source in pivot.columns]
-    pivot.reset_index(inplace=True)
-    return pd.merge(df, pivot, on=id_col, how='inner')
-
-
-def process_gpt_output(chat_comp: ChatCompletion):
-    finish_reason = chat_comp.choices[0].finish_reason
-    answer = chat_comp.choices[0].message.content
-    comp_tokens = chat_comp.usage.completion_tokens
-    prompt_tokens = chat_comp.usage.prompt_tokens
-
-    return answer, finish_reason, prompt_tokens, comp_tokens
-
-def schedule_compute_cost(path_file):
-    return count_tokens(tc.clean_text(parse_txt(path_file)))
-
-def update_meta(path_meta: str, meta: Meta):
-    with open(path_meta, 'wb') as file:
-        pickle.dump(meta, file)
-
-def update_schedule(path_schedule: str, schedule: pd.DataFrame):
-    schedule.to_csv(path_schedule, index=False)
-
-def get_num_batches_to_run(prompt, lower_bound, upper_bound):
-    while True:
-        try:
-            user_input = input(prompt)
-            if str(user_input) == 'all':
-                return upper_bound
-            number = int(user_input)
-            if lower_bound <= number <= upper_bound:
-                return number
-            else:
-                print(f"Please enter a number within the bounds ({lower_bound}, {upper_bound}).")
-        except ValueError:
-            print("The input is not a valid integer. Please try again.")
-
-def get_num_workers(prompt, lower_bound, upper_bound):
-    while True:
-        try:
-            user_input = input(prompt)
-            number = int(user_input)
-            if lower_bound <= number <= upper_bound:
-                return number
-            else:
-                print(f"Please enter a number within the bounds ({lower_bound}, {upper_bound}).")
-        except ValueError:
-            print("The input is not a valid integer. Please try again.")
-
-def read_character_and_decide():
-    while True:  # Keep asking until we get a 'y' or 'n'
-        print("\tWould you like to start processing now?")
-        user_input = input("\tEnter 'y' or 'n': ").lower()  # Convert to lowercase to handle 'Y' or 'N'
-        if user_input == 'y':
-            return True
-        elif user_input == 'n':
-            return False
-        else:
-            print("\tInvalid input. Please enter 'y' or 'n'.")

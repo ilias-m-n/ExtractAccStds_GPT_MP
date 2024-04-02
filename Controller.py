@@ -32,6 +32,7 @@ class Controller():
 
         # Schedules
         self.macro_schedule = None
+        self.path_macro_schedule = None
         self.micro_schedule = None
         self.removed_schedule = None
 
@@ -50,13 +51,18 @@ class Controller():
         self.unprocessed_batch_ids = None
         self.processed_batch_ids = None
         self.lock = None
+
         # Number of batches to run
         self.num_batches_to_run = None
 
-        self.results = self.manager.dict()
+        # JSON Output Format Keys
+        self.gpt_source_keys = self.meta.gpt_source_keys
+        self.gpt_answer_keys = self.meta.gpt_source_keys
+        self.answer_labels = [f"{s}_{a}" for s in self.meta.gpt_source_keys for a in self.meta.gpt_answer_keys]
+        self.answer_labels += ['answer_code']
 
     def run(self):
-        print('\n\nStarting controller...\n')
+        print('Starting controller...\n')
         print('Generating GPT framework...\n')
         self.prep_GPT_framework()
         print('Loading schedule...')
@@ -65,15 +71,13 @@ class Controller():
         self.preprocessing_and_configure()
         print('Processing batches...\n')
         self.process_batches()
-        print('Processing results...\n')
-        self.process_results()
         print('Done.')
 
     def prep_GPT_framework(self):
         gpt = gp.GPT_Prompter(os.path.join(self.path_fs_examples, self.meta.file_fs_examples),
                               self.meta.min_ratio,
                               self.meta.flag_incl_sentence,
-                              self.meta.flag_ua,
+                              self.meta.flag_user_assistant,
                               self.meta.flag_segmented
                               )
         gpt.prep()
@@ -92,6 +96,7 @@ class Controller():
             self.create_schedules()
             # save changes to meta file
             util.update_meta(self.path_meta, self.meta)
+        self.path_macro_schedule = os.path.join(self.path_schedules, self.meta.file_macro_schedule)
 
     def create_schedules(self):
         # Files
@@ -162,6 +167,7 @@ class Controller():
         self.num_workers = util.get_num_workers('\tHow many workers would you like to employ?\t',
                                                 1, min(8, len(self.unprocessed_batch_ids)))
         self.lock = self.manager.Lock()
+        print()
 
     def process_batches(self):
         with Pool(processes=self.num_workers) as pool:
@@ -169,7 +175,6 @@ class Controller():
                 print('hi')
                 res = pool.apply_async(worker, args=(self.unprocessed_batch_ids,
                                                      self.processed_batch_ids,
-                                                     self.results,
                                                      self.lock,
                                                      self.micro_schedule,
                                                      self.base_prompt_token_length,
@@ -178,27 +183,32 @@ class Controller():
                                                      self.meta.overlay,
                                                      self.system_prompt,
                                                      self.user_assistant,
-                                                     self.meta.model,))
-
+                                                     self.meta.model,
+                                                     self.answer_labels,
+                                                     self.gpt_source_keys,
+                                                     self.gpt_answer_keys,
+                                                     self.path_results,
+                                                     self.path_macro_schedule,
+                                                     ))
             pool.close()
             pool.join()
 
         print(f"\n\tAll desired batches processed.\n")
 
-    def process_results(self):
-        # Save results to csv files and update schedule
-        for batch_id, res in self.results.items():
-            res[['output', 'finish_reason', 'true_total_prompt_tokens', 'completion_tokens']] = res.apply(
-                lambda x: util.process_gpt_output(x.output), axis=1, result_type='expand')
-            res.drop(['filepath'], axis=1, inplace=True)
-            res.to_csv(os.path.join(self.path_results, f'batch_{str(batch_id)}.csv'), index=False)
-            self.macro_schedule.loc[self.macro_schedule.batch_id == batch_id, "status"] = 'processed'
-            self.meta.processed_batch_ids.append(batch_id)
-        util.update_schedule(os.path.join(self.path_schedules, self.meta.file_macro_schedule), self.macro_schedule)
-        util.update_meta(self.path_meta, self.meta)
-
-
-def process_batch(df_segment, base_token_length, flag_segmented, max_token_num, overlay, system, user_assistant, model):
+def process_batch(batch_id,
+                  df_segment,
+                  base_token_length,
+                  flag_segmented,
+                  max_token_num,
+                  overlay,
+                  system,
+                  user_assistant,
+                  model,
+                  answer_labels,
+                  source_keys,
+                  answer_keys,
+                  path_results,
+                  ):
     df_input = util.prep_inputs(df_segment,
                                 'filepath',
                                 ['filepath', 'filename'],
@@ -210,12 +220,21 @@ def process_batch(df_segment, base_token_length, flag_segmented, max_token_num, 
     client = OpenAI()
     df_input['output'] = df_input.apply(
         lambda x: util.prompt_gpt(client, system, x.prompt, user_assistant, model), axis=1)
-    return df_input
+
+    # extend gpt completion
+    df_input[['output', 'finish_reason', 'true_total_prompt_tokens', 'completion_tokens']] = df_input.apply(
+        lambda x: util.process_gpt_output(x.output), axis=1, result_type='expand')
+    df_input.drop(['filepath'], axis=1, inplace=True)
+    # process json answer
+    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, source_keys, answer_keys),
+                                             axis=1, result_type='expand')
+    # save dataframe as csv
+    df_input.to_csv(os.path.join(path_results, f'batch_{str(batch_id)}.csv'), index=False)
+    return True
 
 
 def worker(unprocessed_batch_ids,
            processed_batch_ids,
-           results,
            lock,
            micro_schedule,
            base_token_length,
@@ -224,7 +243,13 @@ def worker(unprocessed_batch_ids,
            overlay,
            system,
            user_assistant,
-           model, ):
+           model,
+           answer_labels,
+           source_keys,
+           answer_keys,
+           path_results,
+           path_macro_schedules,
+           ):
     while unprocessed_batch_ids:
         with lock:
             if unprocessed_batch_ids:
@@ -232,16 +257,25 @@ def worker(unprocessed_batch_ids,
 
         print(f"\tProcessing batch {batch_id}")
         df_segment = micro_schedule[micro_schedule.batch_id == batch_id]
-        result = process_batch(df_segment,
+        result = process_batch(batch_id,
+                               df_segment,
                                base_token_length,
                                flag_segmented,
                                max_token_num,
                                overlay,
                                system,
                                user_assistant,
-                               model, )
+                               model,
+                               answer_labels,
+                               source_keys,
+                               answer_keys,
+                               path_results,
+                               )
+
 
         with lock:
             processed_batch_ids.append(batch_id)
-            results[batch_id] = result
+            macro_schedule = pd.read_csv(path_macro_schedules)
+            macro_schedule.loc[macro_schedule.batch_id == batch_id, "status"] = 'processed'
+            util.update_schedule(path_macro_schedules, macro_schedule)
         print(f"\tFinished batch ID: {batch_id}")
