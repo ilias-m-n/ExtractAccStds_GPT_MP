@@ -57,8 +57,8 @@ class Controller():
 
         # JSON Output Format Keys
         self.gpt_source_keys = self.meta.gpt_source_keys
-        self.gpt_answer_keys = self.meta.gpt_source_keys
-        self.answer_labels = [f"{s}_{a}" for s in self.meta.gpt_source_keys for a in self.meta.gpt_answer_keys]
+        self.gpt_answer_keys = self.meta.gpt_answer_keys
+        self.answer_labels = [f"{s}_{a}" for s in self.gpt_source_keys for a in self.gpt_answer_keys]
         self.answer_labels += ['answer_code']
 
     def run(self):
@@ -226,8 +226,7 @@ def process_batch(batch_id,
         lambda x: util.process_gpt_output(x.output), axis=1, result_type='expand')
     df_input.drop(['filepath'], axis=1, inplace=True)
     # process json answer
-    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, source_keys, answer_keys),
-                                             axis=1, result_type='expand')
+    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, source_keys, answer_keys), axis=1, result_type='expand')
     # save dataframe as csv
     df_input.to_csv(os.path.join(path_results, f'batch_{str(batch_id)}.csv'), index=False)
     return True

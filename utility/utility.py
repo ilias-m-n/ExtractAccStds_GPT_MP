@@ -288,11 +288,11 @@ def expand_output(output, source_keys=None, answer_keys=None):
 
     # check whether all source keys present in dict
     if not all_keys_present(out_dict, source_keys):
-        answer_key = 2
+        answer_code = 2
 
     # check whether all answer keys present in answer dicts
     if not all(all_keys_present(out_dict[source], answer_keys) for source in source_keys):
-        answer_key = 3
+        answer_code = 3
 
     # extract answers
     for s in source_keys:
