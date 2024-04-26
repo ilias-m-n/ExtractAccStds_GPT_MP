@@ -3,6 +3,7 @@ import os
 import pickle
 import re
 from collections import Counter
+from tkinter import Tk, filedialog
 
 import pandas as pd
 from openai import OpenAI
@@ -17,6 +18,14 @@ from tiktoken import get_encoding
 from . import Meta
 from . import text_cleaning as tc
 
+# File Dialog
+def select_file(path):
+    root = Tk()
+    root.withdraw()  # Hides the main window
+    file_path = filedialog.askopenfilename(initialdir=path, title="Select file")
+    if file_path:
+        print(f"File selected: {file_path}")
+    return file_path
 
 # Planning functions: Cost and Compute Time
 
@@ -261,22 +270,20 @@ def read_character_and_decide():
 def all_keys_present(dictionary, keys):
     return all(key in dictionary for key in keys)
 
-def expand_output(output, source_keys=None, answer_keys=None):
+def expand_output(output, answer_keys=None):
     """
     answer_codes:
         0: answer readable
-        1: answer not correctly formated in json
-        2: not all source keys present
+        1: answer not correctly formatted in json
+        2: not all source keys present - no longer relevant
         3: not all answers keys present
     """
     if answer_keys is None:
         answer_keys = ['sentence', 'term']
-    if source_keys is None:
-        source_keys = ['audit', 'notes']
 
     out_dict = None
     answer_code = 0
-    len_answer = len(source_keys) * len(answer_keys)
+    len_answer = len(answer_keys) #* len(source_keys)
     answers = list()
 
     # check output format
@@ -284,27 +291,33 @@ def expand_output(output, source_keys=None, answer_keys=None):
         out_dict = json.loads(output)
     except ValueError:
         answer_code = 1
-        return [None, ] * len_answer, answer_code
+        return *[None for _ in range(len_answer)], answer_code
 
-    # check whether all source keys present in dict
-    if not all_keys_present(out_dict, source_keys):
-        answer_code = 2
+    if not isinstance(out_dict, dict):
+        answer_code = 1
+        return *[None for _ in range(len_answer)], answer_code
+
+    # # check whether all source keys present in dict
+    # if not all_keys_present(out_dict, source_keys):
+    #     answer_code = 2
 
     # check whether all answer keys present in answer dicts
-    if not all(all_keys_present(out_dict[source], answer_keys) for source in source_keys):
+    if not all_keys_present(out_dict, answer_keys):
         answer_code = 3
 
     # extract answers
-    for s in source_keys:
-        source = out_dict.get(s, None)
-        if source:
-            for a in answer_keys:
-                answers.append(source.get(a, None))
+    # for s in source_keys:
+    #     source = out_dict.get(s, None)
+    #     if source:
+    #         for a in answer_keys:
+    #             answers.append(source.get(a, None))
+    for a in answer_keys:
+        answers.append(out_dict.get(a, None))
 
     return *answers, answer_code
 
 # Task specific
-def prep_fs_examples(df, id_col, source_col, paragraph_col, sentence_col, standard_col, incl_sentence,
+def prep_fs_examples(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence,
                      flag_user_assistant,
                      flag_segmented, base_prompt=""):
     user_assistant = None
@@ -312,81 +325,80 @@ def prep_fs_examples(df, id_col, source_col, paragraph_col, sentence_col, standa
 
     if flag_user_assistant:
         if not flag_segmented:
-            user_assistant = get_user_assistant_context(df, id_col, source_col, paragraph_col, sentence_col,
+            user_assistant = get_user_assistant_context(df, id_col, paragraph_col, sentence_col,
                                                         standard_col, incl_sentence)
         else:
-            user_assistant = get_user_assistant_context_segmented(df, source_col, paragraph_col, sentence_col,
+            user_assistant = get_user_assistant_context_segmented(df, paragraph_col, sentence_col,
                                                                   standard_col, incl_sentence)
     else:
         if not flag_segmented:
-            prompt_examples = get_examples_prompt(df, id_col, source_col, paragraph_col, sentence_col, standard_col,
+            prompt_examples = get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col,
                                                   incl_sentence, base_prompt)
         else:
-            prompt_examples = get_examples_prompt_segmented(df, source_col, paragraph_col, sentence_col,
+            prompt_examples = get_examples_prompt_segmented(df, paragraph_col, sentence_col,
                                                             standard_col, incl_sentence, base_prompt)
 
     return user_assistant, prompt_examples
 
-def get_user_assistant_context(df, id_col, source_col, paragraph_col, sentence_col, standard_col, incl_sentence):
+def get_user_assistant_context(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence):
     user_assistant = []
 
     for id_ua in df[id_col].unique():
         user_content = ""
-        assistant_content = {}
+        assistant_content = None
         row = df[df[id_col] == id_ua]
 
-        for source in row[source_col].unique():
-            user_content += str(row[row[source_col] == source][paragraph_col].values[0]) + " ... "
-            if incl_sentence:
-                assistant_content[source] = {"sentence": str(row[row[source_col] == source][sentence_col].values[0]),
-                                             "term": str(row[row[source_col] == source][standard_col].values[0])}
-            else:
-                assistant_content[source] = {"term": str(row[row[source_col] == source][standard_col].values[0])}
+
+        user_content += str(row[paragraph_col].values[0]) + " ... "
+        if incl_sentence:
+            assistant_content = {"sentence": str(row[sentence_col].values[0]),
+                                 "term": str(row[standard_col].values[0])}
+        else:
+            assistant_content = {"term": str(row[standard_col].values[0])}
 
         user_assistant.append((user_content, json.dumps(assistant_content)))
 
     return user_assistant
 
 
-def get_user_assistant_context_segmented(df, source_col, paragraph_col, sentence_col, standard_col,
+def get_user_assistant_context_segmented(df, paragraph_col, sentence_col, standard_col,
                                          incl_sentence):
     user_assistant = []
 
     for i, row in enumerate(df.index):
         paragraph = df.loc[row, paragraph_col]
-        source = df.loc[row, source_col]
         sentence_std = df.loc[row, sentence_col]
         standard_std = df.loc[row, standard_col]
 
-        assistant_content = {}
+        assistant_content = None
 
         if incl_sentence:
-            assistant_content[source] = {"sentence": sentence_std,
-                                         "term": standard_std}
+            assistant_content = {"sentence": sentence_std,
+                                 "term": standard_std}
         else:
-            assistant_content[source] = {"term": standard_std}
+            assistant_content = {"term": standard_std}
 
         user_assistant.append((paragraph, json.dumps(assistant_content)))
 
     return user_assistant
 
 
-def get_examples_prompt(df, id_col, source_col, paragraph_col, sentence_col, standard_col, incl_sentence, base):
+def get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence, base):
     examples = base
 
     for index, curr_id in enumerate(df[id_col].unique()):
         examples += "\nExample " + str(index) + ":\n"
         paragraph = ""
-        sentence_std = {}
+        sentence_std = None
         row = df[df[id_col] == curr_id]
 
-        for source in row[source_col].unique():
-            paragraph += str(row[row[source_col] == source][paragraph_col].values[0]) + " ... "
-            if incl_sentence:
-                sentence_std[source] = {"sentence": str(row[row[source_col] == source][sentence_col].values[0]),
-                                        "term": str(row[row[source_col] == source][standard_col].values[0])}
-            else:
-                sentence_std[source] = {"term": str(row[row[source_col] == source][standard_col].values[0])}
+
+        paragraph += str(row[paragraph_col].values[0]) + " ... "
+        if incl_sentence:
+            sentence_std = {"sentence": str(row[sentence_col].values[0]),
+                            "term": str(row[standard_col].values[0])}
+        else:
+            sentence_std = {"term": str(row[standard_col].values[0])}
 
         examples += paragraph + "\nAnswer " + str(index) + ":\n"
         examples += json.dumps(sentence_std) + '\n'
@@ -394,7 +406,7 @@ def get_examples_prompt(df, id_col, source_col, paragraph_col, sentence_col, sta
     return examples
 
 
-def get_examples_prompt_segmented(df, source_col, paragraph_col, sentence_col, standard_col, incl_sentence,
+def get_examples_prompt_segmented(df, paragraph_col, sentence_col, standard_col, incl_sentence,
                                   base):
     examples = base
 
@@ -404,15 +416,14 @@ def get_examples_prompt_segmented(df, source_col, paragraph_col, sentence_col, s
 
         paragraph = df.loc[row, paragraph_col]
 
-        source = df.loc[row, source_col]
         sentence_std = df.loc[row, sentence_col]
         standard_std = df.loc[row, standard_col]
 
         if incl_sentence:
-            sentence_std = {source: {"sentence": sentence_std,
-                                     "term": standard_std}}
+            sentence_std = {"sentence": sentence_std,
+                            "term": standard_std}
         else:
-            sentence_std = {source: {"term": standard_std}}
+            sentence_std = {"term": standard_std}
 
         examples += paragraph + "\nAnswer " + str(i) + ":\n"
         examples += json.dumps(sentence_std) + '\n'

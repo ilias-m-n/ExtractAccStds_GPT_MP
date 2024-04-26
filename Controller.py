@@ -1,6 +1,5 @@
 import os
 import sys
-
 import pandas as pd
 
 pd.set_option('display.width', None)
@@ -8,7 +7,7 @@ from multiprocessing import Pool, Manager
 from openai import OpenAI
 
 import utility.utility as util
-import utility.GPT_Prompter as gp
+from utility import prompts
 
 
 class Controller():
@@ -74,16 +73,29 @@ class Controller():
         print('Done.')
 
     def prep_GPT_framework(self):
-        gpt = gp.GPT_Prompter(os.path.join(self.path_fs_examples, self.meta.file_fs_examples),
-                              self.meta.min_ratio,
-                              self.meta.flag_incl_sentence,
-                              self.meta.flag_user_assistant,
-                              self.meta.flag_segmented
-                              )
-        gpt.prep()
-        self.base_prompt_token_length = gpt.base_prompt_token_length
-        self.system_prompt = gpt.system_prompt
-        self.user_assistant = gpt.user_assistant
+        # prep fs examles
+        path_fs_examples_file = os.path.join(self.path_fs_examples, self.meta.file_fs_examples)
+        df_fs_examples = pd.read_csv(path_fs_examples_file)
+        user_assistant, fs_prompt = util.prep_fs_examples(df=df_fs_examples,
+                                                          id_col='filename',
+                                                          paragraph_col='paragraph (context)',
+                                                          sentence_col='sentence',
+                                                          standard_col='term',
+                                                          incl_sentence=self.meta.flag_incl_sentence,
+                                                          flag_user_assistant=self.meta.flag_user_assistant,
+                                                          flag_segmented=self.meta.flag_segmented,
+                                                          base_prompt=prompts.examples_base1)
+
+        # prep instruction prompt elements
+        self.system_prompt = self.meta.prompt_system + ' '.join(self.meta.prompt_instructions)
+        self.system_prompt += fs_prompt
+        self.user_assistant = user_assistant
+
+        # estimate token length
+        self.base_prompt_token_length = util.count_tokens(self.system_prompt)
+        if user_assistant:
+            for ua in user_assistant:
+                self.base_prompt_token_length += util.count_tokens(ua[0]) + util.count_tokens(ua[1])
 
     def load_schedule(self):
         if self.meta.flag_schedule:
@@ -111,12 +123,7 @@ class Controller():
         path_input_file_ids_file = os.path.join(self.path_input_file_ids, self.meta.file_input_file_ids)
         # read input file
         micro_schedule = pd.read_csv(path_input_file_ids_file)
-        # might need to be removed later
-        micro_schedule['filename'] = micro_schedule['filename'].astype('str') + ".txt"
-        # define file path
-        micro_schedule['filepath'] = micro_schedule['filename'].apply(lambda x: os.path.join(self.path_raw_files, x))
-        # calculate token length and cost, takes a while
-        micro_schedule['prompt_token_length'] = micro_schedule['filepath'].apply(
+        micro_schedule['prompt_token_length'] = micro_schedule['doc_path'].apply(
             util.schedule_compute_cost) + self.base_prompt_token_length
         # remove examples which exceed limit
         removed_examples = micro_schedule[micro_schedule['prompt_token_length'] > self.meta.max_tokens_allowed].copy()
@@ -130,7 +137,7 @@ class Controller():
                                                                                     args={self.price})
         self.micro_schedule = micro_schedule.copy()
         # Agg. to create macro schedule
-        macro_schedule = micro_schedule.drop(['filename', 'filepath'], axis=1).copy()
+        macro_schedule = micro_schedule.drop(['doc_id', 'doc_path'], axis=1).copy()
         micro_schedule.to_csv(path_micro, index=False)
         del micro_schedule
         macro_schedule = macro_schedule.groupby('batch_id').agg(
@@ -210,8 +217,8 @@ def process_batch(batch_id,
                   path_results,
                   ):
     df_input = util.prep_inputs(df_segment,
-                                'filepath',
-                                ['filepath', 'filename'],
+                                'doc_path',
+                                ['doc_path', 'doc_id'],
                                 base_token_length,
                                 flag_segmented,
                                 max_token_num,
@@ -224,9 +231,10 @@ def process_batch(batch_id,
     # extend gpt completion
     df_input[['output', 'finish_reason', 'true_total_prompt_tokens', 'completion_tokens']] = df_input.apply(
         lambda x: util.process_gpt_output(x.output), axis=1, result_type='expand')
-    df_input.drop(['filepath'], axis=1, inplace=True)
+    df_input.drop(['doc_path'], axis=1, inplace=True)
+
     # process json answer
-    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, source_keys, answer_keys), axis=1, result_type='expand')
+    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, answer_keys), axis=1, result_type='expand')
     # save dataframe as csv
     df_input.to_csv(os.path.join(path_results, f'batch_{str(batch_id)}.csv'), index=False)
     return True

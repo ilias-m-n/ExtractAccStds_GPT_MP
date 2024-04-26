@@ -16,6 +16,8 @@ class Meta:
                  max_tokens_allowed,
                  gpt_source_keys,
                  gpt_answer_keys,
+                 prompt_system,
+                 prompt_instructions
                  ):
         # Date and time in string
         self.creation_datetime = datetime.strftime("%Y-%m-%d-%H-%M")
@@ -52,4 +54,6 @@ class Meta:
         # GPT Prompt Settings
         self.gpt_source_keys = gpt_source_keys
         self.gpt_answer_keys = gpt_answer_keys
+        self.prompt_system = prompt_system
+        self.prompt_instructions = prompt_instructions
 

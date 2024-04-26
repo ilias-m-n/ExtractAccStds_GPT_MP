@@ -1,8 +1,5 @@
-
-
-
-# System Context Messages   ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: 
-system_context_basic = """
+# System Context Messages   :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+system_context_basic1 = """
 You are a financial accountant.
 """
 
@@ -34,17 +31,33 @@ the financial statement has been prepared, and from the auditor section you are 
 standard the financial statement is in compliance with. \
 It is possible that a financial statement is in compliance with or has been constructed according to multiple \
 standards, in which case you should extract both - note, double standards are most likely in close vicinity to each other. \
+
 I will provide you with smaller segments from longer textual sequences this means that it is often the case that none of the desired information is contained within one of the segments. 
 Make absolutely sure that you only respond with phrases you find within the provided segment of a financial statement. \
 Before providing an answer, check whether you can find it within the provided text.\n
 """
 
-# Common Terms :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Accounting Standards, common terms:
-common_terms_accounting_stds = """
-Here are a few examples, delimited tags (<acc_std><\\acc_std>) and separated by dashes, of how accounting standards can be presented in text: \
-<acc_std>{acc_std}<\\acc_std>/n.
+task_descr_auditor = """
+You are tasked to extract information that can be found within a financial statement document. \
+More specifically, you are tasked to extract in accordance with which accounting standard the financial statement \
+presents its information. It is possible that a financial statement presents its information in compliance with more \
+than one accounting standard. In this case, you are tasked to extract all that standards that are mentioned.\
+I will provide you with short text segments that have been extracted from a financial statement document. \
+Make absolutely sure that you only respond with phrases you find within the provided financial statement. \
+Before providing an answer, check whether you can find it within the provided text.\n
 """
+
+task_descr_notes = """
+You are tasked to extract information that can be found within a financial statement document. \
+More specifically, you are tasked to extract in accordance with which accounting standard the financial statement \
+has been prepared. It is possible that a financial statement has been prepared in compliance with more \
+than one accounting standard. In this case, you are tasked to extract all that standards that are mentioned.\
+I will provide you with short text segments that have been extracted from a financial statement document. \
+Make absolutely sure that you only respond with phrases you find within the provided financial statement. \
+Before providing an answer, check whether you can find it within the provided text.\n
+"""
+
+# Common Terms :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 ## Terms commonly found around standard in auditor section
 common_terms_section_auditor = """
@@ -76,7 +89,7 @@ Answer in the following format:
 }
 """
 
-## Format 3
+## Format 2
 answer_format2 = """
 Answer in one of the following formats:
 - For the audit part:
@@ -106,7 +119,7 @@ Answer in one of the following formats:
 }
 """
 
-## Format 2
+## Format 3
 answer_format3 = """
 Answer in the following format:
 {
@@ -118,6 +131,16 @@ Answer in the following format:
 ## note segmented
 answer_note_seg1 = """
 Note in case a segment contains none of the information just answer with: "no info contained".
+"""
+
+### Split Format
+
+answer_format_split = """
+Answer in the following format:
+{
+ "sentence" : "sentence from which you extracted the accounting standard",
+ "term" : "accounting standard you extracted"
+}
 """
 
 # Instruction: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -139,4 +162,13 @@ audit part or the notes part.
 4) Extract the desired term.
 5) Double check that the term you extract is actually contained in the provided segment.
 6) List both the term, the sentence, and what part you extracted the term from.
+"""
+
+instruction_3 = """
+Please follow these instructions:
+1) First read the financial statement segments.
+2) Second find the sentence that contains the desired term.
+3) Extract the desired term.
+4) Make sure that the term you extract is actually contained in the provided financial statement segment.
+5) List both the term and the sentence from which you extracted the term.
 """
