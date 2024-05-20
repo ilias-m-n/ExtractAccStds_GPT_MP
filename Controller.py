@@ -18,12 +18,12 @@ class Controller():
 
         # Directory paths
         self.path_cwd = os.getcwd()
-        self.path_schedules = os.path.join(self.path_cwd, 'schedules')
         self.path_data = os.path.join(self.path_cwd, 'data')
+        self.path_schedules = os.path.join(self.path_data, 'schedules')
         self.path_input_file_ids = os.path.join(self.path_data, 'input_file_ids')
         self.path_fs_examples = os.path.join(self.path_data, 'fs_examples')
         self.path_raw_files = os.path.join(self.path_data, 'raw_files')
-        self.path_outputs = os.path.join(self.path_cwd, 'outputs')
+        self.path_outputs = os.path.join(self.path_data, 'outputs')
         self.path_results = os.path.join(self.path_outputs,
                                          f"results_{self.meta.meta_id}_{self.meta.creation_datetime}")
         if not os.path.exists(self.path_results):
@@ -36,7 +36,7 @@ class Controller():
         self.removed_schedule = None
 
         # Aux. Info
-        cost_per_1k_tokens = {"gpt-3.5-turbo-0125": 0.0005, "gpt-4-0125-preview": 0.01}
+        cost_per_1k_tokens = {"gpt-3.5-turbo-0125": 0.0005, "gpt-4-turbo": 0.01, "gpt-4o": 0.005}
         self.price = cost_per_1k_tokens[self.meta.model]
 
         # GPT Prompt Settings
@@ -55,9 +55,10 @@ class Controller():
         self.num_batches_to_run = None
 
         # JSON Output Format Keys
-        self.gpt_source_keys = self.meta.gpt_source_keys
+        #self.gpt_source_keys = self.meta.gpt_source_keys
         self.gpt_answer_keys = self.meta.gpt_answer_keys
-        self.answer_labels = [f"{s}_{a}" for s in self.gpt_source_keys for a in self.gpt_answer_keys]
+        #self.answer_labels = [f"{s}_{a}" for s in self.gpt_source_keys for a in self.gpt_answer_keys]
+        self.answer_labels = [f"{a}" for a in self.gpt_answer_keys]
         self.answer_labels += ['answer_code']
 
     def run(self):
@@ -70,18 +71,22 @@ class Controller():
         self.preprocessing_and_configure()
         print('Processing batches...\n')
         self.process_batches()
+        print('Aggregating Results...\n')
+        self.aggregate_batch_results()
         print('Done.')
 
     def prep_GPT_framework(self):
         # prep fs examles
         path_fs_examples_file = os.path.join(self.path_fs_examples, self.meta.file_fs_examples)
-        df_fs_examples = pd.read_csv(path_fs_examples_file)
+        df_fs_examples = pd.read_csv(path_fs_examples_file, delimiter=';')
         user_assistant, fs_prompt = util.prep_fs_examples(df=df_fs_examples,
                                                           id_col='filename',
-                                                          paragraph_col='paragraph (context)',
+                                                          paragraph_col='paragraph',
                                                           sentence_col='sentence',
                                                           standard_col='term',
                                                           incl_sentence=self.meta.flag_incl_sentence,
+                                                          doc_ent_col = 'doc_type',
+                                                          incl_doc_entity = self.meta.flag_incl_doc_entity,
                                                           flag_user_assistant=self.meta.flag_user_assistant,
                                                           flag_segmented=self.meta.flag_segmented,
                                                           base_prompt=prompts.examples_base1)
@@ -156,7 +161,7 @@ class Controller():
         self.meta.flag_schedule = True
 
     def preprocessing_and_configure(self):
-        if not util.read_character_and_decide():
+        if not util.read_character_yes_no('Would you like to start processing now?'):
             sys.exit()
         # MultiProcessing Settings
         self.unprocessed_batch_ids = self.macro_schedule[self.macro_schedule['status'] == 'unprocessed'].batch_id.values
@@ -164,6 +169,7 @@ class Controller():
             print(f"\n\t{len(self.unprocessed_batch_ids)} unprocessed batches remaining...")
         else:
             print("\n\tAll batches have already been processed. Shutting down...")
+            self.aggregate_batch_results()
             sys.exit()
         processed_batch_ids = self.macro_schedule[self.macro_schedule['status'] != 'unprocessed'].batch_id.values
         self.processed_batch_ids = self.manager.list(processed_batch_ids)
@@ -172,9 +178,22 @@ class Controller():
         self.unprocessed_batch_ids = self.unprocessed_batch_ids[:self.num_batches_to_run]
         self.unprocessed_batch_ids = self.manager.list(self.unprocessed_batch_ids)
         self.num_workers = util.get_num_workers('\tHow many workers would you like to employ?\t',
-                                                1, min(8, len(self.unprocessed_batch_ids)))
+                                                1, min(36, len(self.unprocessed_batch_ids)))
         self.lock = self.manager.Lock()
         print()
+
+    def aggregate_batch_results(self):
+        if not util.check_files_in_directory(self.path_results) or not util.read_character_yes_no('Would you like to aggregate the batched results?'):
+            return 0
+        batch_result_files = [os.path.join(self.path_results, batch) for batch in os.listdir(self.path_results)]
+        agg_df = None
+        for path in batch_result_files:
+            curr_df = pd.read_csv(path)
+            agg_df = pd.concat([agg_df, curr_df]) if isinstance(agg_df, pd.DataFrame) else curr_df
+            util.delete_file(path)
+        agg_df.reset_index(drop=True, inplace=True)
+        agg_df.to_csv(os.path.join(self.path_results, 'agg_results.csv'), index=False)
+        
 
     def process_batches(self):
         with Pool(processes=self.num_workers) as pool:
@@ -192,11 +211,12 @@ class Controller():
                                                      self.user_assistant,
                                                      self.meta.model,
                                                      self.answer_labels,
-                                                     self.gpt_source_keys,
+                                                     #self.gpt_source_keys,
                                                      self.gpt_answer_keys,
                                                      self.path_results,
                                                      self.path_macro_schedule,
                                                      ))
+                #print(res.get())
             pool.close()
             pool.join()
 
@@ -212,7 +232,7 @@ def process_batch(batch_id,
                   user_assistant,
                   model,
                   answer_labels,
-                  source_keys,
+                  #source_keys,
                   answer_keys,
                   path_results,
                   ):
@@ -234,7 +254,8 @@ def process_batch(batch_id,
     df_input.drop(['doc_path'], axis=1, inplace=True)
 
     # process json answer
-    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, answer_keys), axis=1, result_type='expand')
+    #df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, answer_keys), axis=1, result_type='expand')
+    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output2(x.output, answer_keys), axis=1, result_type='expand')
     # save dataframe as csv
     df_input.to_csv(os.path.join(path_results, f'batch_{str(batch_id)}.csv'), index=False)
     return True
@@ -252,7 +273,7 @@ def worker(unprocessed_batch_ids,
            user_assistant,
            model,
            answer_labels,
-           source_keys,
+           #source_keys,
            answer_keys,
            path_results,
            path_macro_schedules,
@@ -274,7 +295,7 @@ def worker(unprocessed_batch_ids,
                                user_assistant,
                                model,
                                answer_labels,
-                               source_keys,
+                               #source_keys,
                                answer_keys,
                                path_results,
                                )

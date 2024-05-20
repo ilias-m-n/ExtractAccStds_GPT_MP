@@ -19,13 +19,28 @@ from . import Meta
 from . import text_cleaning as tc
 
 # File Dialog
-def select_file(path):
+def select_file(path, title):
     root = Tk()
     root.withdraw()  # Hides the main window
-    file_path = filedialog.askopenfilename(initialdir=path, title="Select file")
+    file_path = filedialog.askopenfilename(initialdir=path, title=title)
     if file_path:
         print(f"File selected: {file_path}")
     return file_path
+
+# check whether folder is empty
+def check_files_in_directory(path):
+    eles = os.listdir(path)
+    eles = [ele for ele in eles if ele != '.gitkeep']
+    return len(eles) > 0
+
+# delete file 
+def delete_file(file_path):
+    try:
+        os.remove(file_path)
+        print(f"File {file_path} has been deleted successfully.")
+    except OSError as error:
+        print(f"Error: {error}")
+        print(f"Failed to delete {file_path}.")
 
 # Planning functions: Cost and Compute Time
 
@@ -60,9 +75,10 @@ def parse_txt(file_path: str, return_if_none="") -> str:
     # first check whether file exists
     if os.path.isfile(file_path):
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding='utf-8') as file:
                 res = file.read()
         except UnicodeDecodeError:
+            print('error reading')
             return return_if_none
         else:
             # checks whether text contains words temporary solution
@@ -145,7 +161,7 @@ def concat_terms(terms: dict[str, int], delimiter=" , ") -> str:
 
 
 # Call API
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(30))
 def get_completion(client: OpenAI, messages: list[dict[str, str]], model: str = "gpt-3.5-turbo-0125", temp=0):
     """
     # Available Models: https://platform.openai.com/docs/models/overview
@@ -256,9 +272,9 @@ def get_num_workers(prompt, lower_bound, upper_bound):
         except ValueError:
             print("The input is not a valid integer. Please try again.")
 
-def read_character_and_decide():
+def read_character_yes_no(prompt):
     while True:  # Keep asking until we get a 'y' or 'n'
-        print("\tWould you like to start processing now?")
+        print(f"\t{prompt}")
         user_input = input("\tEnter 'y' or 'n': ").lower()  # Convert to lowercase to handle 'Y' or 'N'
         if user_input == 'y':
             return True
@@ -270,17 +286,17 @@ def read_character_and_decide():
 def all_keys_present(dictionary, keys):
     return all(key in dictionary for key in keys)
 
-def expand_output(output, answer_keys=None):
+def split_dicts_string(input_string):
+    dict_strings = re.findall(r'\{[^{}]*\}', input_string)
+    return dict_strings
+
+def expand_output(output, answer_keys):
     """
     answer_codes:
         0: answer readable
         1: answer not correctly formatted in json
-        2: not all source keys present - no longer relevant
-        3: not all answers keys present
+        2: not all answers keys present
     """
-    if answer_keys is None:
-        answer_keys = ['sentence', 'term']
-
     out_dict = None
     answer_code = 0
     len_answer = len(answer_keys) #* len(source_keys)
@@ -297,28 +313,79 @@ def expand_output(output, answer_keys=None):
         answer_code = 1
         return *[None for _ in range(len_answer)], answer_code
 
-    # # check whether all source keys present in dict
-    # if not all_keys_present(out_dict, source_keys):
-    #     answer_code = 2
-
     # check whether all answer keys present in answer dicts
     if not all_keys_present(out_dict, answer_keys):
-        answer_code = 3
+        answer_code = 2
 
-    # extract answers
-    # for s in source_keys:
-    #     source = out_dict.get(s, None)
-    #     if source:
-    #         for a in answer_keys:
-    #             answers.append(source.get(a, None))
     for a in answer_keys:
         answers.append(out_dict.get(a, None))
 
     return *answers, answer_code
 
+def expand_output2(output, answer_keys):
+    """
+    answer_codes:
+        0: answer readable
+        1: no dictionary found in output
+        2: individual answer not correctly formatted in json
+        3: individual answer not correctly formatted as dictionary
+        4: individual answer not all answers keys present
+
+    """
+    len_answer = len(answer_keys)
+    
+    answers = {key:[] for key in range(len_answer)}
+    answer_codes = list()
+
+    answer_dicts = split_dicts_string(output)
+    if len(answer_dicts) == 0:
+        answer_codes = [1]
+        return *[None for _ in range(len_answer)], answer_codes
+
+    # check output format
+    for dict_s in answer_dicts:
+        out_dict = None
+        try:
+            mod_dict_s = re.sub(r',\s*\n?\s*}', '}', dict_s)
+            out_dict = json.loads(mod_dict_s)
+        except ValueError:
+            answer_codes.append(2)
+            for key in range(len_answer):
+                answers[key].append("None")
+            continue
+
+        if not isinstance(out_dict, dict):
+            answer_codes.append(3)
+            for key in range(len_answer):
+                answers[key].append("None")
+
+        # check whether all answer keys present in answer dicts
+        if not all_keys_present(out_dict, answer_keys):
+            answer_codes.append(4)
+            for key in range(len_answer):
+                answers[key].append("None")
+        
+        flag_answer_code = False
+        for i, a in enumerate(answer_keys):
+            answers[i].append(out_dict.get(a, "None"))
+            if flag_answer_code:
+                continue
+            answer_codes.append(0)
+            flag_answer_code = True
+
+    #print(answers)
+    #for key in answers:
+    #    if answers[key] == None:
+    #        answers[key] = ""
+    answers = ["; ".join(answers[key]) for key in answers]
+
+    return *answers, answer_codes
+
+
+
 # Task specific
 def prep_fs_examples(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence,
-                     flag_user_assistant,
+                     doc_ent_col, incl_doc_entity, flag_user_assistant,
                      flag_segmented, base_prompt=""):
     user_assistant = None
     prompt_examples = ""
@@ -326,21 +393,21 @@ def prep_fs_examples(df, id_col, paragraph_col, sentence_col, standard_col, incl
     if flag_user_assistant:
         if not flag_segmented:
             user_assistant = get_user_assistant_context(df, id_col, paragraph_col, sentence_col,
-                                                        standard_col, incl_sentence)
+                                                        standard_col, incl_sentence, doc_ent_col, incl_doc_entity)
         else:
             user_assistant = get_user_assistant_context_segmented(df, paragraph_col, sentence_col,
                                                                   standard_col, incl_sentence)
     else:
         if not flag_segmented:
             prompt_examples = get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col,
-                                                  incl_sentence, base_prompt)
+                                                  incl_sentence, base_prompt, doc_ent_col, incl_doc_entity)
         else:
             prompt_examples = get_examples_prompt_segmented(df, paragraph_col, sentence_col,
                                                             standard_col, incl_sentence, base_prompt)
 
     return user_assistant, prompt_examples
 
-def get_user_assistant_context(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence):
+def get_user_assistant_context(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence, doc_ent_col, incl_doc_entity):
     user_assistant = []
 
     for id_ua in df[id_col].unique():
@@ -350,11 +417,17 @@ def get_user_assistant_context(df, id_col, paragraph_col, sentence_col, standard
 
 
         user_content += str(row[paragraph_col].values[0]) + " ... "
-        if incl_sentence:
+        if incl_doc_entity and incl_sentence:
+            assistant_content["doc"] = str(row[doc_ent_col].values[0])
+            assistant_content = {"doc":str(row[doc_ent_col].values[0]),
+                                 "sentence": str(row[sentence_col].values[0]),
+                                 "term": str(row[standard_col].values[0])}
+        elif incl_sentence:
             assistant_content = {"sentence": str(row[sentence_col].values[0]),
                                  "term": str(row[standard_col].values[0])}
         else:
             assistant_content = {"term": str(row[standard_col].values[0])}
+            
 
         user_assistant.append((user_content, json.dumps(assistant_content)))
 
@@ -383,7 +456,7 @@ def get_user_assistant_context_segmented(df, paragraph_col, sentence_col, standa
     return user_assistant
 
 
-def get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence, base):
+def get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence, base, doc_ent_col, incl_doc_entity):
     examples = base
 
     for index, curr_id in enumerate(df[id_col].unique()):
@@ -394,6 +467,10 @@ def get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col, i
 
 
         paragraph += str(row[paragraph_col].values[0]) + " ... "
+        if incl_sentence and incl_doc_entity:
+            sentence_std = {"doc": str(row[doc_ent_col].values[0]),
+                            "sentence": str(row[sentence_col].values[0]),
+                            "term": str(row[standard_col].values[0])}
         if incl_sentence:
             sentence_std = {"sentence": str(row[sentence_col].values[0]),
                             "term": str(row[standard_col].values[0])}

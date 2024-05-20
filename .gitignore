@@ -4,9 +4,13 @@
 /data/fs_examples/*
 /data/raw_files/*
 /data/input_file_ids/*
-/meta_files/*
-/schedules/*
+/data/meta_files/*
+/data/schedules/*
 /utility/__pycache__/*
-/outputs/*
+/data/outputs/*
 /activate_venv.bat
 /olds/*
+/Untitled.ipynb
+/Untitled1.ipynb
+/.ipynb_checkpoints
+/utility/.ipynb_checkpoints/

@@ -5,6 +5,7 @@ class Meta:
                  model,
                  datetime,
                  flag_incl_sentence,
+                 flag_incl_doc_entity,
                  flag_user_assistant,
                  flag_segmented,
                  min_ratio,
@@ -14,7 +15,7 @@ class Meta:
                  file_input_file_ids,
                  schedule_batch_size,
                  max_tokens_allowed,
-                 gpt_source_keys,
+                 #gpt_source_keys,
                  gpt_answer_keys,
                  prompt_system,
                  prompt_instructions
@@ -29,6 +30,7 @@ class Meta:
         self.model = model
         # Config flags
         self.flag_incl_sentence = flag_incl_sentence
+        self.flag_incl_doc_entity = flag_incl_doc_entity
         self.flag_user_assistant = flag_user_assistant
         self.flag_segmented = flag_segmented
         # Min. term occurrence ratio
@@ -52,7 +54,7 @@ class Meta:
         self.max_tokens_allowed = max_tokens_allowed
 
         # GPT Prompt Settings
-        self.gpt_source_keys = gpt_source_keys
+        #self.gpt_source_keys = gpt_source_keys
         self.gpt_answer_keys = gpt_answer_keys
         self.prompt_system = prompt_system
         self.prompt_instructions = prompt_instructions
