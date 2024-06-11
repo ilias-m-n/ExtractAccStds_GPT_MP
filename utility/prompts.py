@@ -248,6 +248,15 @@ Answer in the following format:
 }
 """
 
+answer_format_split_3 = """
+Answer in the following format:
+{
+ "doc" : ["dcoument type, which has been constructed according to the mentioned standard"],
+ "sentence" : ["sentence from which you extracted the accounting standard, rule, or act"],
+ "term" : ["accounting standard, rule, or act you extracted"]
+}
+"""
+
 # Instruction: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 instruction_old = """ 
 Please follow these instructions:

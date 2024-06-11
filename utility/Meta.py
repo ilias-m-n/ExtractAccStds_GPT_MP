@@ -8,6 +8,7 @@ class Meta:
                  flag_incl_doc_entity,
                  flag_user_assistant,
                  flag_segmented,
+                 flag_ext_examples,
                  min_ratio,
                  max_token_num,
                  overlay,
@@ -33,6 +34,7 @@ class Meta:
         self.flag_incl_doc_entity = flag_incl_doc_entity
         self.flag_user_assistant = flag_user_assistant
         self.flag_segmented = flag_segmented
+        self.flag_ext_examples = flag_ext_examples
         # Min. term occurrence ratio
         self.min_ratio = min_ratio
         # Segmentation settings
@@ -49,6 +51,10 @@ class Meta:
         self.file_macro_schedule = None
         self.file_micro_schedule = None
         self.file_removed_schedule = None
+        self.number_unprocessed_batches = None
+
+        # Cost
+        self.overall_est_cost = None
 
         # Prompt settings
         self.max_tokens_allowed = max_tokens_allowed
@@ -58,4 +64,22 @@ class Meta:
         self.gpt_answer_keys = gpt_answer_keys
         self.prompt_system = prompt_system
         self.prompt_instructions = prompt_instructions
+
+    def __str__(self):
+        descr = f"""
+        Meta File: {self.meta_id}
+        Created at: {self.creation_datetime}
+
+        Model: {self.model}
+
+        Batch Size: {self.schedule_batch_size}
+        
+        File Few-Shot Examples: {self.file_fs_examples}
+        File Input: {self.file_input_file_ids}
+
+        
+        """
+        ##-Unprocessed Batches: {self.number_unprocessed_batches}
+        #Estimated Cost: {self.overall_est_cost}
+        return descr
 

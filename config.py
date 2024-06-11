@@ -24,7 +24,8 @@ Few shot settings
 _flag_incl_sentence = True
 _flag_incl_doc_entity = True
 _flag_user_assistant = True
-_flag_segmented = False
+_flag_segmented = False # legacy remove later across files
+_flag_ext_examples = True
 
 """
 Segmentation Settings
@@ -46,7 +47,8 @@ _max_tokens_allowed = 15900
 GPT Prompting Settings
 """
 #_gpt_source_keys = ['auditor']
-_gpt_answer_keys = ['sentence', 'term']
+_gpt_answer_keys = ['doc', 'sentence', 'term']
 
 _prompt_system = prompts.system_context_basic1
-_prompt_instructions = [prompts.task_descr_notes_3, prompts.instruction_4, prompts.answer_format_split_2]
+#_prompt_instructions = [prompts.task_descr_auditor_5, prompts.instruction_4, prompts.answer_format_split_3]
+_prompt_instructions = [prompts.task_descr_notes_3, prompts.instruction_4, prompts.answer_format_split_3]

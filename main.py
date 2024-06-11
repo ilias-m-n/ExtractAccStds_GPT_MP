@@ -29,6 +29,7 @@ def read_meta_config():
         flag_incl_doc_entity = config._flag_incl_doc_entity
         flag_user_assistant = config._flag_user_assistant
         flag_segmented = config._flag_segmented
+        flag_ext_examples = config._flag_ext_examples
         max_token_num = config._max_token_num
         overlay = config._overlay
         # file_input_file_ids = config._file_input_file_ids
@@ -54,6 +55,7 @@ def read_meta_config():
                     flag_incl_doc_entity,
                     flag_user_assistant,
                     flag_segmented,
+                    flag_ext_examples,
                     min_ratio,
                     max_token_num,
                     overlay,
@@ -75,5 +77,6 @@ def read_meta_config():
 if __name__ == '__main__':
     _ = load_dotenv(find_dotenv())
     meta, path_meta = read_meta_config()
+    print(meta)
     con = Controller(meta, path_meta)
     con.run()

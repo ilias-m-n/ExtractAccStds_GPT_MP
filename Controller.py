@@ -78,7 +78,8 @@ class Controller():
     def prep_GPT_framework(self):
         # prep fs examles
         path_fs_examples_file = os.path.join(self.path_fs_examples, self.meta.file_fs_examples)
-        df_fs_examples = pd.read_csv(path_fs_examples_file, delimiter=';')
+        #df_fs_examples = pd.read_csv(path_fs_examples_file)
+        df_fs_examples = pd.read_parquet(path_fs_examples_file)
         user_assistant, fs_prompt = util.prep_fs_examples(df=df_fs_examples,
                                                           id_col='filename',
                                                           paragraph_col='paragraph',
@@ -89,7 +90,8 @@ class Controller():
                                                           incl_doc_entity = self.meta.flag_incl_doc_entity,
                                                           flag_user_assistant=self.meta.flag_user_assistant,
                                                           flag_segmented=self.meta.flag_segmented,
-                                                          base_prompt=prompts.examples_base1)
+                                                          base_prompt=prompts.examples_base1,
+                                                          flag_ext_examples= self.meta.flag_ext_examples)
 
         # prep instruction prompt elements
         self.system_prompt = self.meta.prompt_system + ' '.join(self.meta.prompt_instructions)
@@ -153,6 +155,8 @@ class Controller():
         macro_schedule['status'] = 'unprocessed'
         self.macro_schedule = macro_schedule.copy()
         macro_schedule.to_csv(path_macro, index=False)
+        self.meta.overall_est_cost = self.macro_schedule['sum_prompt_cost'].sum()
+        self.meta.number_unprocessed_batches = self.macro_schedule.shape[0]
         del macro_schedule
         # Update meta object
         self.meta.file_macro_schedule = file_macro
@@ -165,6 +169,7 @@ class Controller():
             sys.exit()
         # MultiProcessing Settings
         self.unprocessed_batch_ids = self.macro_schedule[self.macro_schedule['status'] == 'unprocessed'].batch_id.values
+        self.meta.number_unprocessed_batches = len(self.unprocessed_batch_ids)
         if len(self.unprocessed_batch_ids) > 0:
             print(f"\n\t{len(self.unprocessed_batch_ids)} unprocessed batches remaining...")
         else:
@@ -221,6 +226,7 @@ class Controller():
             pool.join()
 
         print(f"\n\tAll desired batches processed.\n")
+        self.meta.number_unprocessed_batches = self.macro_schedule[self.macro_schedule['status'] == 'unprocessed'].shape[0]
 
 def process_batch(batch_id,
                   df_segment,
@@ -255,7 +261,8 @@ def process_batch(batch_id,
 
     # process json answer
     #df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, answer_keys), axis=1, result_type='expand')
-    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output2(x.output, answer_keys), axis=1, result_type='expand')
+    #df_input[answer_labels] = df_input.apply(lambda x: util.expand_output2(x.output, answer_keys), axis=1, result_type='expand')
+    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output3(x.output, answer_keys), axis=1, result_type='expand')
     # save dataframe as csv
     df_input.to_csv(os.path.join(path_results, f'batch_{str(batch_id)}.csv'), index=False)
     return True
