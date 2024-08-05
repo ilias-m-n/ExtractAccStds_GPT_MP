@@ -104,6 +104,15 @@ class Controller():
             for ua in user_assistant:
                 self.base_prompt_token_length += util.count_tokens(ua[0]) + util.count_tokens(ua[1])
 
+        print(self.system_prompt)
+        for ua in user_assistant:
+            print()
+            print('user:')
+            print(f'{ua[0]}')
+            print()
+            print('assistant:')
+            print(f'{ua[1]}')
+
     def load_schedule(self):
         if self.meta.flag_schedule:
             self.macro_schedule = pd.read_csv(os.path.join(self.path_schedules, self.meta.file_macro_schedule))
@@ -195,7 +204,7 @@ class Controller():
         for path in batch_result_files:
             curr_df = pd.read_csv(path)
             agg_df = pd.concat([agg_df, curr_df]) if isinstance(agg_df, pd.DataFrame) else curr_df
-            util.delete_file(path)
+            #util.delete_file(path)
         agg_df.reset_index(drop=True, inplace=True)
         agg_df.to_csv(os.path.join(self.path_results, 'agg_results.csv'), index=False)
         

@@ -11,7 +11,7 @@ If empty new meta file created with empty schedule
 "gpt-4-turbo"
 "gpt-4o"
 """
-_model = "gpt-3.5-turbo-0125"
+_model = "gpt-4o"
 
 """
 Min. term occurrence ratio
@@ -36,7 +36,7 @@ _overlay = 200
 """
 Schedule
 """
-_schedule_batch_size = 20
+_schedule_batch_size = 1000
 
 """
 Maximum tokens allowed per example
@@ -50,5 +50,5 @@ GPT Prompting Settings
 _gpt_answer_keys = ['doc', 'sentence', 'term']
 
 _prompt_system = prompts.system_context_basic1
-#_prompt_instructions = [prompts.task_descr_auditor_5, prompts.instruction_4, prompts.answer_format_split_3]
-_prompt_instructions = [prompts.task_descr_notes_3, prompts.instruction_4, prompts.answer_format_split_3]
+_prompt_instructions = [prompts.task_descr_auditor_12, prompts.instruction_6, prompts.answer_format_split_4]
+#_prompt_instructions = [prompts.task_descr_notes_5, prompts.instruction_6, prompts.answer_format_split_4]

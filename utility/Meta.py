@@ -77,9 +77,8 @@ class Meta:
         File Few-Shot Examples: {self.file_fs_examples}
         File Input: {self.file_input_file_ids}
 
-        
+        Unprocessed Batches: {self.number_unprocessed_batches}
+        Estimated Cost: {self.overall_est_cost}
         """
-        ##-Unprocessed Batches: {self.number_unprocessed_batches}
-        #Estimated Cost: {self.overall_est_cost}
         return descr
 

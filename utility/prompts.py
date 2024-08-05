@@ -95,6 +95,25 @@ Before providing an answer, check whether you can find it within the provided te
 it is actually in the provided text and when you find a term make sure it is actually in the sentence you find.\n
 """
 
+task_descr_auditor_6 = """
+You are tasked to extract information that can be found within a report of a company. \
+More specifically, you are tasked to extract, according to the auditor's opinion, in accordance \
+with which accounting standard, rules, practices, principles, or acts the company prepared its financial statements, financial report, and/or annual report. \
+Make sure to exclude auditing standards. It is possible that a report is in compliance with more than one accounting standard. \
+In this case, you are tasked to extract all that standards, rules, and/or acts that are mentioned. Please also make sure to list which document type \
+has been prepared according to the standard, multiple are possible. Examples are: financial statements, consolidated financial statements, financial report, annual report. Please also make sure to not capture standards that refer to previous or upcoming years. \
+Note that the auditor will phrase their findings as an opinion, so priotize sentences that start with either 'in our opinion' or 'in my opinion'. \
+Make absolutely sure to ignore paragraphs about the opinion of the director/s and also make sure to ignore information about remuneration reports. \
+When you extract the accounting standard, rules, practices, principles, or acts make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as \
+provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Sometimes consecutive sentences contain additional standards that are of importance, make sure to record them aswell. \
+I will provide you with short text segments that have been extracted from a company's report. \
+Make absolutely sure that you only respond with phrases and terms you find within the provided report. \
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a term make sure it is actually in the sentence you find.\n
+"""
+
 task_descr_auditor_5 = """
 You are tasked to extract information that can be found within a report of a company. \
 More specifically, you are tasked to extract, according to the auditor's opinion, in accordance \
@@ -103,15 +122,140 @@ Make sure to exclude auditing standards. \
 It is possible that a report is in compliance with more than one accounting standard. \
 In this case, you are tasked to extract all that standards, rules, and/or acts that are mentioned. Please also make sure to list which document type \
 has been prepared according to the standard, multiple are possible. Examples are: financial statements, consolidated financial statements, financial report, annual report. Please also make sure to not capture standards that refer to previous or upcoming years. \
-
 Note that the auditor will phrase their findings as an opinion, so priotize sentences that start with either 'in our opinion' or 'in my opinion'. \
+Make sure that it is not the opinion of the director/s. Also make sure to ignore remuneration reports. \
 When you extract the accounting standard, rules, practices, principles, or acts make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
 For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as \
 provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Sometimes consecutive sentences contain additional standards that are of importance, make sure to record them aswell. \
 I will provide you with short text segments that have been extracted from a company's report. \
 Make absolutely sure that you only respond with phrases and terms you find within the provided report. \
 Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
 it is actually in the provided text and when you find a term make sure it is actually in the sentence you find.\n
+"""
+
+
+
+task_descr_auditor_7 = """
+You are tasked to extract information that can be found within a report of a company. \
+More specifically, you are tasked to extract, according to the auditor's opinion, in accordance \
+with which accounting standard, rules, practices, principles, or acts the company prepared its financial statements, financial report, and/or annual report. \
+Make sure to exclude auditing standards. It is possible that a report is in compliance with more than one accounting standard. \
+In this case, you are tasked to extract all that standards, rules, and/or acts that are mentioned. Please also make sure to list which document type \
+has been prepared according to the standard, multiple are possible. Look for close variants of following document types: financial statements, consolidated financial statements, financial report, annual report. Please also make sure to not capture standards that refer to previous or upcoming years. \
+Make sure to ignore remuneration reports. \
+Note that the auditor will phrase their findings as an opinion, so priotize sentences that start with either 'in our opinion' or 'in my opinion'. \
+Make absolutely sure to ignore sentences about the opinion of the directors.\
+When you extract the accounting standard, rules, practices, principles, or acts make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as \
+provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Sometimes consecutive sentences contain additional standards that are of importance, make sure to record them aswell. \
+I will provide you with short text segments that have been extracted from a company's report. \
+Make absolutely sure that you only respond with phrases and terms you find within the provided report. \
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_auditor_8 = """
+From a company report you are tasked to extract, according to the auditor's opinion, in accordance \
+with which accounting standards/rules/practices/principles/acts the company prepared its document types. \
+Document types can be in compliance with more than one accounting standard. Please also make sure to list which document type \
+has been prepared according to which standards, multiple are possible. Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report. Please also make sure to not capture standards that refer to previous or upcoming years. Make sure to ignore remuneration reports. \
+Note that the auditor will phrase their findings as an opinion, priotize sentences that start with either 'in our opinion' or 'in my opinion'. \
+Important, do not catch the directors' opinion, we only care about the auditor's opinion.\
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Sometimes consecutive sentences contain additional standards that apply, record them with the previous sentence only if the document type is referred to via a demonstrative pronoun. \
+Make absolutely sure that you only respond with senteces, document types, and terms you find within the provided report. \
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_auditor_9 = """
+From a company report you are tasked to extract, according to the auditor's opinion, in accordance \
+with which accounting standards/rules/practices/principles/acts the company prepared its document types. \
+Document types can be in compliance with more than one accounting standard. Please also make sure to list which document type \
+has been prepared according to which standards, multiple are possible. Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report. Please also make sure to not capture standards that refer to previous or upcoming years. Make sure to ignore remuneration reports. \
+Note that the auditor will phrase their findings as an opinion, priotize sentences that start with 'in our opinion' or 'in my opinion'. \
+Important, ignore the opinion of directos, we only care about the opinion of auditors.\
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Make absolutely sure that you only respond with senteces, document types, and terms you find within the provided report. \
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_auditor_10 = """
+From a company report you are tasked to extract, according to the auditor's opinion, in accordance with which accounting standards/rules/practices/principles/acts the company prepared its document types. Document types can be in compliance with more than one accounting standard. Please also make sure to list which document type has been prepared according to which standards, multiple are possible. Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report. Please also make sure to not capture standards that refer to previous or upcoming years. Make sure to ignore remuneration reports. Note that the auditor will phrase their findings as an opinion, priotize sentences that start with 'in our opinion' or 'in my opinion'. Important, ignore the opinion of directos, we only care about the opinion of auditors. When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_auditor_11 = """
+From a company report you are tasked to extract, according to the auditor's opinion, with which accounting standards/rules/practices/principles/acts the company prepared its document types. \
+Please also make sure to list which document type has been prepared according to which standards, multiple are possible. Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report. Please also make sure to not capture standards that refer to previous years. Make sure to ignore remuneration reports. \
+Note that the auditor will phrase their findings as an opinion, priotize sentences that start with 'in our opinion' or 'in my opinion'. \
+Important, ignore the opinion of directos, we only care about the opinion of auditors.\
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_auditor_12 = """
+From a company report you are tasked to extract, according to the auditor's opinion, in compliance with which accounting standards/rules/practices/principles/acts the company prepared its document types. \
+Document types can be prepared in accordance with more than one accounting standard. Please also make sure to list which document type has been prepared according to which standards, multiple are possible. \
+Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report. 
+Note that the auditor will usually phrase their findings as an opinion, priotize sentences that start with 'in our opinion' or 'in my opinion'. \
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Make sure to ignore sentences that refer to prior applications of standards. Make sure to ignore sentences about remuneration reports. \
+Make sure to ignore the opinion of directors.\
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_notes_6 = """
+From a company report you are tasked to extract in accordance with which accounting standard/rules/practices/principles/acts \
+the company prepares its document types. Document types can be prepared in accordance with more than one accounting standard.
+Please also make sure to list which document type has been prepared according to which standards, multiple are possible.
+Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report.
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it.
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings.
+Make sure to ignore sentences that refer to prior or upcoming applications of standards.
+Make sure to ignore sentences about remuneration reports and opinions.
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_notes_5_2 = """
+From a company report you are tasked to extract in accordance with which accounting standard/rules/practices/principles/acts \
+the company prepares its document types. Document types can be prepared in accordance with more than one accounting standard. Please also make sure to list which document type has been prepared according to which standards, multiple are possible. Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report.
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it.
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings.
+Make sure to ignore sentences that refer to prior applications of standards.
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_notes_5 = """
+From a company report you are tasked to extract in accordance with which accounting standard/rules/practices/principles/acts \
+the company prepares its document types. Document types can be prepared in accordance with more than one accounting standard. Please also make sure to list which document type has been prepared according to which standards, multiple are possible. Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report.
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it.
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings.
+Make sure to ignore sentences that refer to prior applications of standards. Make sure to ignore sentences about remuneration reports and opinions. 
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
+"""
+
+task_descr_notes_4 = """
+From a company report you are tasked to extract in accordance with which accounting standard/rules/practices/principles/acts \
+the company prepares its document types. Document types can be prepared in accordance with more than one accounting standard. \
+Please also make sure to list which document type has been prepared according to which standards, multiple are possible. \
+Look for close variants of the following document types: financial statements, consolidated financial statements, financial report, and annual report. Please also make sure to not capture standards that refer to previous or upcoming years. Make sure to ignore remuneration reports and opinions. \
+When you extract the accounting standard make sure to extract also the provisions, jurisdictions, or issuance entities that apply to it. \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial reporting standard as provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
+it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
 """
 
 task_descr_notes_3 = """
@@ -126,8 +270,10 @@ annual report. Please also make sure to not capture standards that refer to prev
 Note the company will never phrase it as an opinion. \
 When you extract the accounting standard, rules, practices, principles, or acts make sure to extract also the provisions, jurisdictions, or issuance \
 entities that apply to it. \
-For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial \ reporting standard as \
+For example, IFRS as provided by the EU, generally accepted accounting rules/principles/practices as accepted by/in a country, international financial \
+reporting standard as \
 provisioned in the act, International Financial Reporting Standards as issued by the International Accounting Standards Board, and other phrasings. \
+Sometimes consecutive sentences contain additional standards that are of importance, make sure to record them aswell. \
 I will provide you with short text segments that have been extracted from a company's report. \
 Make absolutely sure that you only respond with phrases and terms you find within the provided report. \
 Before providing an answer, check whether you can find it within the provided text. This means when you find a sentence make sure \
@@ -242,7 +388,7 @@ Answer in the following format:
 answer_format_split_2 = """
 Answer in the following format:
 {
- "doc" : "dcoument type, which has been constructed according to the mentioned standard",
+ "doc" : "document type, which has been constructed according to the mentioned standard",
  "sentence" : "sentence from which you extracted the accounting standard, rule, or act",
  "term" : "accounting standard, rule, or act you extracted"
 }
@@ -253,8 +399,21 @@ Answer in the following format:
 {
  "doc" : ["dcoument type, which has been constructed according to the mentioned standard"],
  "sentence" : ["sentence from which you extracted the accounting standard, rule, or act"],
- "term" : ["accounting standard, rule, or act you extracted"]
+ "term" : ["first accounting standard, rule, or act; second accounting standard, rule, or act"]
 }
+"""
+
+answer_format_split_4 = """
+Answer in the following format:
+{"sentence" : ["sentence from which you extracted the accounting standard, rule, or act"],
+ "doc" : ["1st document type"],
+ "term" : ["1st accounting standard/rule/act"; ...; "n-th accounting standard/rule/act"]}
+ 
+ ...
+
+{"sentence" : ["sentence from which you extracted the accounting standard/rule/or act"],
+ "doc" : ["m-th document type"],
+ "term" : ["1st accounting standard/rule/act"; ...; "k-th accounting standard/rule/act"]}
 """
 
 # Instruction: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -314,4 +473,34 @@ Please follow these instructions:
 4) Make sure that the term you extract is actually contained in the provided report segment and the sentence you found.
 5) Make sure that each sentence abbides by the rules mentioned above else reconsider.
 6) List the document type, term, and sentence from which you extracted the document type and term.
+"""
+
+instruction_5 = """
+Please follow these instructions:
+1) First read the section of the company's report provided.
+2) Second find the sentences that contain the desired information.
+3) Extract the sentences and their desired terms from the report.
+4) Make sure that the term you extract is actually contained in the provided report segment and the sentence you found.
+5) Make sure that each sentence abbides by the rules mentioned above else reconsider.
+6) List each sentence with its contained document type and terms in the below json format.
+"""
+
+instruction_6 = """
+Please follow these instructions:
+1) First read the section of the company's report provided.
+2) Second find the sentences that contain the desired information.
+3) Extract the sentences and their desired document types and terms.
+4) Make sure that the term you extract is actually contained in the provided report segment and the sentence you found.
+5) Make sure that each sentence abbides by the rules mentioned above else reconsider.
+6) List each sentence with its contained document type and terms in the below json format.
+"""
+
+instruction_7 = """
+Please follow these instructions:
+1) First read the section of the company's report provided.
+2) Second find the sentences that contain the desired information.
+3) Extract the sentences and their desired document types and terms.
+4) Make sure that the term you extract is actually contained in the provided report segment and the sentence you found.
+5) Make sure that each sentence abbides by the rules mentioned above the instruction, otherwise remove it.
+6) List each sentence with its contained document type and terms in the below json format.
 """

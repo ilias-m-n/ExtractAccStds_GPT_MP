@@ -161,8 +161,8 @@ def concat_terms(terms: dict[str, int], delimiter=" , ") -> str:
 
 
 # Call API
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(30))
-def get_completion(client: OpenAI, messages: list[dict[str, str]], model: str = "gpt-3.5-turbo-0125", temp=0):
+@retry(wait=wait_random_exponential(min=15, max=120), stop=stop_after_attempt(100))
+def get_completion(client: OpenAI, messages: list[dict[str, str]], model: str = "gpt-3.5-turbo-0125", temp=0, stream = False, n = 1):
     """
     # Available Models: https://platform.openai.com/docs/models/overview
     
@@ -176,7 +176,7 @@ def get_completion(client: OpenAI, messages: list[dict[str, str]], model: str = 
             
         -> 'response.choices[0].finish_reason'
     """
-    response = client.chat.completions.create(model=model, messages=messages, temperature=temp)
+    response = client.chat.completions.create(model=model, messages=messages, temperature=temp, stream = stream, n = n)
     return response
 
 
@@ -209,9 +209,11 @@ def prompt_gpt(client: OpenAI,
                prompt: str,
                user_assistant: list[tuple[str, str]] = None,
                model: str = "gpt-3.5-turbo-0125",
-               temp=0):
+               temp=0,
+               stream = False,
+               n = 1):
     messages = create_messages_context_gpt(system, prompt, user_assistant)
-    output = get_completion(client, messages, model, temp)
+    output = get_completion(client, messages, model, temp, stream, n)
     return output
 
 def partial_pivot(df: pd.DataFrame, id_col, sub_id_col, values_cols, other_cols):
@@ -391,6 +393,7 @@ def expand_output3(output, answer_keys):
         4: individual answer not all answers keys present
 
     """
+    
     len_answer = len(answer_keys)
     
     answers = {key:[] for key in range(len_answer)}
@@ -413,6 +416,8 @@ def expand_output3(output, answer_keys):
                 answers[key].append("None")
             continue
 
+        #print(out_dict)
+
         if not isinstance(out_dict, dict):
             answer_codes.append(3)
             for key in range(len_answer):
@@ -426,17 +431,15 @@ def expand_output3(output, answer_keys):
         
         flag_answer_code = False
         for i, a in enumerate(answer_keys):
+            #print(i, a, out_dict.get(a, "None"))
             answers[i].append(out_dict.get(a, "None"))
             if flag_answer_code:
                 continue
             answer_codes.append(0)
             flag_answer_code = True
 
+    answers = [(answers[key]) for key in answers]
     #print(answers)
-    #for key in answers:
-    #    if answers[key] == None:
-    #        answers[key] = ""
-    #answers = ["; ".join(answers[key]) for key in answers]
 
     return *answers, answer_codes
 
