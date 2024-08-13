@@ -6,7 +6,7 @@ from dotenv import load_dotenv, find_dotenv
 
 from Controller import Controller
 from utility.Meta import Meta
-from utility.utility import update_meta, select_file, check_files_in_directory, read_character_yes_no
+from utility.utility import update_meta, select_file, check_files_in_directory, read_character_yes_no, choose_from_list
 import config
 
 def read_meta_config():
@@ -24,6 +24,10 @@ def read_meta_config():
     else:
         # Read config file
         model = config._model
+        batchAPI_method = config._batchAPI_method
+        batchAPI_endpoint = config._batchAPI_endpoint
+        batchAPI_completion_window = config._batchAPI_completion_window
+        batchAPI_description = config._batchAPI_description
         min_ratio = config._min_ratio
         flag_incl_sentence = config._flag_incl_sentence
         flag_incl_doc_entity = config._flag_incl_doc_entity
@@ -32,14 +36,14 @@ def read_meta_config():
         flag_ext_examples = config._flag_ext_examples
         max_token_num = config._max_token_num
         overlay = config._overlay
-        # file_input_file_ids = config._file_input_file_ids
-        # file_fs_examples = config._file_fs_examples
         schedule_batch_size = config._schedule_batch_size
         max_tokens_allowed = config._max_tokens_allowed
         #gpt_source_keys = config._gpt_source_keys
         gpt_answer_keys = config._gpt_answer_keys
         prompt_system = config._prompt_system
         prompt_instructions = config._prompt_instructions
+
+        mode = choose_from_list('Please choose API query mode:', ['default', 'batchAPI'])
 
         path_input_files = os.path.join(os.getcwd(), 'data', 'input_file_ids')
         file_input_file_ids = select_file(path_input_files, 'Select Input File').split('\\')[-1]
@@ -50,6 +54,11 @@ def read_meta_config():
         # Create new Meta object and schedule
         meta = Meta(uuid4(),
                     model,
+                    mode,
+                    batchAPI_method,
+                    batchAPI_endpoint,
+                    batchAPI_completion_window,
+                    batchAPI_description,
                     datetime.now(),
                     flag_incl_sentence,
                     flag_incl_doc_entity,

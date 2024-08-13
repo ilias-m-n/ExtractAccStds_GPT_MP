@@ -88,6 +88,8 @@ def parse_txt(file_path: str, return_if_none="") -> str:
                 return return_if_none
     return res
 
+def read_prompt_for_agg_res(path):
+    return tc.clean_text(parse_txt(path))
 
 # Prep Inputs
 def prep_inputs(raw_df, filepath_col, coi, base_token_length, flag_segment, max_token_num, overlay,
@@ -101,6 +103,9 @@ def prep_inputs(raw_df, filepath_col, coi, base_token_length, flag_segment, max_
         input_df = segment_text_column(input_df, max_token_num, overlay, base_token_length, encoding)
 
     return input_df
+
+def prep_single_input(path):
+    return tc.clean_text(parse_txt(path))
 
 
 # Create overlaying segments for text
@@ -274,6 +279,18 @@ def get_num_workers(prompt, lower_bound, upper_bound):
         except ValueError:
             print("The input is not a valid integer. Please try again.")
 
+def read_bounded_integer(prompt, lower_bound, upper_bound):
+    while True:
+        try:
+            user_input = input(prompt)
+            number = int(user_input)
+            if lower_bound <= number <= upper_bound:
+                return number
+            else:
+                print(f"Please enter a number within the bounds ({lower_bound}, {upper_bound}).")
+        except ValueError:
+            print("The input is not a valid integer. Please try again.")
+
 def read_character_yes_no(prompt):
     while True:  # Keep asking until we get a 'y' or 'n'
         print(f"\t{prompt}")
@@ -285,13 +302,28 @@ def read_character_yes_no(prompt):
         else:
             print("\tInvalid input. Please enter 'y' or 'n'.")
 
+def choose_from_list(prompt, choices):
+    choices = {k:v for k, v in enumerate(choices)}
+    while True:
+        print(f"\t{prompt}", f"\t {choices}")
+        user_input = input("\tSelect integer value of mode: ") 
+        try:
+            user_input = int(user_input)
+        except:
+            print("\tInvalid input. Please provide integer value.")
+            continue
+        if user_input in choices.keys():
+            return choices[user_input]
+        else:
+            print("\tInvalid input. Please make sure to select one of the available values.")
+
 def all_keys_present(dictionary, keys):
     return all(key in dictionary for key in keys)
 
 def split_dicts_string(input_string):
     dict_strings = re.findall(r'\{[^{}]*\}', input_string)
     return dict_strings
-
+'''
 def expand_output(output, answer_keys):
     """
     answer_codes:
@@ -382,8 +414,16 @@ def expand_output2(output, answer_keys):
     answers = ["; ".join(answers[key]) for key in answers]
 
     return *answers, answer_codes
+'''
 
-def expand_output3(output, answer_keys):
+def clean_json_string(json_str):
+    # Regular expression to match non-printable characters
+    non_printable_regex = re.compile(r'[\x00-\x1F\x7F-\x9F]')
+    
+    # Substitute non-printable characters with an empty string
+    return non_printable_regex.sub('', json_str)
+
+def expand_output(output, answer_keys):
     """
     answer_codes:
         0: answer readable
@@ -393,6 +433,8 @@ def expand_output3(output, answer_keys):
         4: individual answer not all answers keys present
 
     """
+
+    output = clean_json_string(output)
     
     len_answer = len(answer_keys)
     
@@ -639,3 +681,8 @@ def get_examples_prompt_segmented(df, paragraph_col, sentence_col, standard_col,
         examples += json.dumps(sentence_std) + '\n'
 
     return examples
+
+
+
+
+# legacy

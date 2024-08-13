@@ -1,17 +1,19 @@
 from utility import prompts
 
 """
-Meta file
-If empty new meta file created with empty schedule
-"""
-#_meta = ""
-
-"""
 "gpt-3.5-turbo-0125"
 "gpt-4-turbo"
 "gpt-4o"
 """
 _model = "gpt-4o"
+
+"""
+Batch Mode Settings
+"""
+_batchAPI_method = 'POST'
+_batchAPI_endpoint = "/v1/chat/completions"
+_batchAPI_completion_window = '24h'
+_batchAPI_description = 'Batch Job: Extraction Accounting Standards'
 
 """
 Min. term occurrence ratio
@@ -36,17 +38,16 @@ _overlay = 200
 """
 Schedule
 """
-_schedule_batch_size = 1000
+_schedule_batch_size = 100
 
 """
 Maximum tokens allowed per example
 """
-_max_tokens_allowed = 15900
+_max_tokens_allowed = 16000
 
 """
 GPT Prompting Settings
 """
-#_gpt_source_keys = ['auditor']
 _gpt_answer_keys = ['doc', 'sentence', 'term']
 
 _prompt_system = prompts.system_context_basic1

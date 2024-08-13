@@ -3,6 +3,11 @@ class Meta:
     def __init__(self,
                  uuid,
                  model,
+                 mode,
+                 batchAPI_method,
+                 batchAPI_endpoint,
+                 batchAPI_completion_window,
+                 batchAPI_description,
                  datetime,
                  flag_incl_sentence,
                  flag_incl_doc_entity,
@@ -29,6 +34,8 @@ class Meta:
         self.filename = f"meta_{self.meta_id}_{self.creation_datetime}.pkl"
         # Model (gpt-3.5 vs gpt-4)
         self.model = model
+        # Mode (synch vs batch)
+        self.mode = mode        
         # Config flags
         self.flag_incl_sentence = flag_incl_sentence
         self.flag_incl_doc_entity = flag_incl_doc_entity
@@ -44,6 +51,13 @@ class Meta:
         # File paths
         self.file_fs_examples = file_fs_examples
         self.file_input_file_ids = file_input_file_ids
+
+        # BatchAPI Settings
+        self.flag_batchAPI_prep_done = False
+        self.batchAPI_method = batchAPI_method
+        self.batchAPI_endpoint = batchAPI_endpoint
+        self.batchAPI_completion_window = batchAPI_completion_window
+        self.batchAPI_description = batchAPI_description
 
         # Schedule
         self.schedule_batch_size = schedule_batch_size
