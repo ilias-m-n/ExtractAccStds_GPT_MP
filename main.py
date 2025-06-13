@@ -83,9 +83,12 @@ def read_meta_config():
 
     return meta, path_meta
 
-if __name__ == '__main__':
+def main():
     _ = load_dotenv(find_dotenv())
     meta, path_meta = read_meta_config()
     print(meta)
     con = Controller(meta, path_meta)
     con.run()
+
+if __name__ == '__main__':
+    main()

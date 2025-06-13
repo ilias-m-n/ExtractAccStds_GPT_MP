@@ -25,20 +25,19 @@ class Controller():
         self.path_input_file_ids = os.path.join(self.path_data, 'input_file_ids')
         self.path_fs_examples = os.path.join(self.path_data, 'fs_examples')
         self.path_raw_files = os.path.join(self.path_data, 'raw_files')
-        
+
         self.path_batchAPI = os.path.join(self.path_data, 'batchAPI_jobs')
         self.path_batchAPI_inputs = os.path.join(self.path_batchAPI, f"batch_inputs_{self.meta.meta_id}")
         if self.meta.mode == 'batchAPI' and not os.path.exists(self.path_batchAPI_inputs):
             os.makedirs(self.path_batchAPI_inputs)
-        
+
         self.path_outputs = os.path.join(self.path_data, 'outputs')
         self.path_results = os.path.join(self.path_outputs,
                                          f"results_{self.meta.meta_id}_{self.meta.creation_datetime}")
         if not os.path.exists(self.path_results):
-            os.makedirs(self.path_results)            
-        
+            os.makedirs(self.path_results)
 
-        # Schedules
+            # Schedules
         self.macro_schedule = None
         self.path_macro_schedule = None
         self.micro_schedule = None
@@ -48,8 +47,39 @@ class Controller():
         self.bAPI_client = None
 
         # Aux. Info
-        cost_per_1k_tokens = {"gpt-3.5-turbo-0125": 0.0005, "gpt-4-turbo": 0.01, "gpt-4o": 0.005}
-        self.price = cost_per_1k_tokens[self.meta.model]
+        cost_per_1k_tokens_synch = {"gpt-3.5-turbo-0125": 0.0005,  # gpt-3.5-turbo
+                                    "gpt-4-turbo-2024-04-09": 0.01,  # gpt-4-turbo
+                                    "gpt-4o-2024-08-06": 0.0025,  # gpt-4o
+                                    "gpt-4o-mini-2024-07-18": 0.00015,  # gpt-4o-mini
+                                    "o1-2024-12-17": 0.015,  # o1,
+                                    'o1-pro-2025-03-19': 0.15,  # o1-pro
+                                    'o1-mini-2024-09-12': 0.0011,  # o1-mini
+                                    "o3-2025-04-16": 0.002,  # o3,
+                                    'o3-pro-2025-06-10': 0.02,  # o3-pro
+                                    'o3-mini-2025-01-31': 0.0011,  # o3-mini
+                                    'gpt-4.1-2025-04-14': 0.002,  # gpt-4.1
+                                    'gpt-4.1-mini-2025-04-14': 0.0004,  # gpt-4.1-mini
+                                    'gpt-4.1-nano-2025-04-14': 0.0001,  # gpt-4.1-nano
+                                    'gpt-4.5-preview-2025-02-27': 0.075}  # gpt-4.5-preview
+
+        cost_per_1k_tokens_batchAPI = {"gpt-3.5-turbo-0125": 0.00025,  # gpt-3.5-turbo
+                                       "gpt-4-turbo-2024-04-09": 0.005,  # gpt-4-turbo
+                                       "gpt-4o-2024-08-06": 0.00125,  # gpt-4o
+                                       "gpt-4o-mini-2024-07-18": 0.000075,  # gpt-4o-mini
+                                       "o1-2024-12-17": 0.0075,  # o1
+                                       'o1-pro-2025-03-19': 0.075,  # o1-pro
+                                       'o1-mini-2024-09-12': 0.00055,  # o1-mini
+                                       "o3-2025-04-16": 0.001,  # o3
+                                       'o3-pro-2025-06-10': 0.01,  # o3-pro
+                                       'o3-mini-2025-01-31': 0.00055,  # o3-mini
+                                       'gpt-4.1-2025-04-14': 0.001,  # gpt-4.1
+                                       'gpt-4.1-mini-2025-04-14': 0.0002,  # gpt-4.1-mini
+                                       'gpt-4.1-nano-2025-04-14': 0.00005,  # gpt-4.1-nano
+                                       'gpt-4.5-preview-2025-02-27': 0.0375}  # gpt-4.5-preview
+
+        cost_per_1k_tokens = {'default': cost_per_1k_tokens_synch, 'batchAPI': cost_per_1k_tokens_batchAPI}
+
+        self.price = cost_per_1k_tokens[self.meta.mode][self.meta.model]
 
         # GPT Prompt Settings
         self.base_prompt_token_length = None
@@ -104,15 +134,14 @@ class Controller():
         self.preprocessing_and_configure_batchAPI()
         print('Process retrieved outputs...\n')
         self.process_batchAPI_outputs()
-        #print('Aggregating Results...\n')
-        #self.aggregate_batch_results_batchAPI()
-        #print('Done')
-        
+        # print('Aggregating Results...\n')
+        # self.aggregate_batch_results_batchAPI()
+        print('Done')
 
     def prep_GPT_framework(self):
         # prep fs examles
         path_fs_examples_file = os.path.join(self.path_fs_examples, self.meta.file_fs_examples)
-        #df_fs_examples = pd.read_csv(path_fs_examples_file)
+        # df_fs_examples = pd.read_csv(path_fs_examples_file)
         df_fs_examples = pd.read_parquet(path_fs_examples_file)
         user_assistant, fs_prompt = util.prep_fs_examples(df=df_fs_examples,
                                                           id_col='filename',
@@ -120,12 +149,12 @@ class Controller():
                                                           sentence_col='sentence',
                                                           standard_col='term',
                                                           incl_sentence=self.meta.flag_incl_sentence,
-                                                          doc_ent_col = 'doc_type',
-                                                          incl_doc_entity = self.meta.flag_incl_doc_entity,
+                                                          doc_ent_col='doc',
+                                                          incl_doc_entity=self.meta.flag_incl_doc_entity,
                                                           flag_user_assistant=self.meta.flag_user_assistant,
                                                           flag_segmented=self.meta.flag_segmented,
                                                           base_prompt=prompts.examples_base1,
-                                                          flag_ext_examples= self.meta.flag_ext_examples)
+                                                          flag_ext_examples=self.meta.flag_ext_examples)
 
         # prep instruction prompt elements
         self.system_prompt = self.meta.prompt_system + ' '.join(self.meta.prompt_instructions)
@@ -138,14 +167,16 @@ class Controller():
             for ua in self.user_assistant:
                 self.base_prompt_token_length += util.count_tokens(ua[0]) + util.count_tokens(ua[1])
 
-        #print(self.system_prompt)
-        #for ua in user_assistant:
-        #    print()
-        #    print('user:')
-        #    print(f'{ua[0]}')
-        #    print()
-        #    print('assistant:')
-        #    print(f'{ua[1]}')
+        if util.read_character_yes_no('Would you like to show the prompt?\n'):
+            print(self.system_prompt)
+        if util.read_character_yes_no('Would you like to show the simulated conversation?\n'):
+            for ua in user_assistant:
+                print()
+                print('user:')
+                print(f'{ua[0]}')
+                print()
+                print('assistant:')
+                print(f'{ua[1]}')
 
     def load_schedule(self):
         if self.meta.flag_schedule:
@@ -211,20 +242,22 @@ class Controller():
         if not self.meta.flag_batchAPI_prep_done:
             method = self.meta.batchAPI_method
             url = self.meta.batchAPI_endpoint
-    
+
             batch_ids = self.macro_schedule['batch_id'].values
 
             self.macro_schedule['path_batchAPI_job'] = ""
             self.macro_schedule["batchAPI_input_file_id"] = ""
             self.macro_schedule["batchAPI_batch_id"] = ""
-            
+
             self.macro_schedule["batchAPI_output_file_id"] = ""
             self.macro_schedule["batchAPI_error_file_id"] = ""
-            
+
             self.macro_schedule["batchAPI_path_output_file"] = ""
             self.macro_schedule["batchAPI_path_error_file"] = ""
 
-            self.macro_schedule = self.macro_schedule.astype({"batchAPI_output_file_id": 'str',
+            self.macro_schedule = self.macro_schedule.astype({"batchAPI_input_file_id": 'str',
+                                                              "batchAPI_batch_id": 'str',
+                                                              "batchAPI_output_file_id": 'str',
                                                               "batchAPI_error_file_id": 'str',
                                                               "batchAPI_path_output_file": 'str',
                                                               "batchAPI_path_error_file": 'str'})
@@ -235,12 +268,12 @@ class Controller():
                 df_curr = self.micro_schedule[self.micro_schedule.batch_id == batch]
                 temp_dict = {"custom_id": "",
                              "method": method,
-                             "url":url,
-                             "body": {"model":self.meta.model,
+                             "url": url,
+                             "body": {"model": self.meta.model,
                                       "temperature": 0,
                                       "n": 1,
                                       "messages": [{"role": "system", "content": self.system_prompt}]
-                                     }
+                                      }
                              }
 
                 if self.user_assistant:
@@ -250,7 +283,6 @@ class Controller():
 
                 # pre-append final prompt
                 temp_dict['body']["messages"].append({"role": "user", "content": ""})
-
 
                 with open(path_file_curr, 'w', encoding='utf-8') as file:
                     for index, row in df_curr.iterrows():
@@ -263,12 +295,12 @@ class Controller():
             util.update_meta(self.path_meta, self.meta)
 
         # Fix deprecated warning when excel reads strings columns as float
-        self.macro_schedule = self.macro_schedule.astype({"batchAPI_output_file_id": 'str',
-                                                              "batchAPI_error_file_id": 'str',
-                                                              "batchAPI_path_output_file": 'str',
-                                                              "batchAPI_path_error_file": 'str'})
-
-    
+        self.macro_schedule = self.macro_schedule.astype({"batchAPI_input_file_id": 'str',
+                                                          "batchAPI_batch_id": 'str',
+                                                          "batchAPI_output_file_id": 'str',
+                                                          "batchAPI_error_file_id": 'str',
+                                                          "batchAPI_path_output_file": 'str',
+                                                          "batchAPI_path_error_file": 'str'})
 
     def preprocessing_and_configure_default(self):
         if not util.read_character_yes_no('Would you like to start processing now?'):
@@ -299,47 +331,52 @@ class Controller():
 
         # All Batch IDs
         all_batch_ids = self.macro_schedule['batch_id'].values
-        
+
         # Processing Batch IDs
         bAPI_uploaded_batch_ids = list(self.macro_schedule[self.macro_schedule['status'] == 'uploaded'].batch_id.values)
-        bAPI_validating_batch_ids = list(self.macro_schedule[self.macro_schedule['status'] == 'validating'].batch_id.values)
-        bAPI_in_progress_batch_ids = list(self.macro_schedule[self.macro_schedule['status'] == 'in_progress'].batch_id.values)
-        bAPI_finalizing_batch_ids = list(self.macro_schedule[self.macro_schedule['status'] == 'finalizing'].batch_id.values)
+        bAPI_validating_batch_ids = list(
+            self.macro_schedule[self.macro_schedule['status'] == 'validating'].batch_id.values)
+        bAPI_in_progress_batch_ids = list(
+            self.macro_schedule[self.macro_schedule['status'] == 'in_progress'].batch_id.values)
+        bAPI_finalizing_batch_ids = list(
+            self.macro_schedule[self.macro_schedule['status'] == 'finalizing'].batch_id.values)
 
         # OpenAI Client
         self.bAPI_client = OpenAI()
-        
+
         # Check status of uploaded batches
-        check_ids = sorted(bAPI_uploaded_batch_ids + bAPI_validating_batch_ids + bAPI_in_progress_batch_ids + bAPI_finalizing_batch_ids)
+        check_ids = sorted(
+            bAPI_uploaded_batch_ids + bAPI_validating_batch_ids + bAPI_in_progress_batch_ids + bAPI_finalizing_batch_ids)
         if len(check_ids) > 0:
             print('\nChecking status of uploaded batches...')
             self.batchAPI_check_status(check_ids)
 
         # Visualization Print
         if util.read_character_yes_no(f'\nWould you like to show the current status of all batches?: '):
-            print('\n',self.macro_schedule[['batch_id', 'status', 'batchAPI_input_file_id', 'batchAPI_output_file_id', 'batchAPI_error_file_id']])
-        
+            print('\n', self.macro_schedule[
+                ['batch_id', 'status', 'batchAPI_input_file_id', 'batchAPI_output_file_id', 'batchAPI_error_file_id']])
+
         # Download completed batches
         comp_ids = self.macro_schedule[self.macro_schedule['status'] == 'completed'].batch_id.values
         if len(comp_ids) > 0:
             print('\nDownloading completed batch jobs...')
             self.batchAPI_retrieve_completed(comp_ids)
-        
+
         # Upload/Queue new batches
         unprocessed_ids = self.macro_schedule[self.macro_schedule['status'] == 'unprocessed'].batch_id.values
         if len(unprocessed_ids) == 0:
             print('\nNo unprocessed batches to upload.')
         else:
-            num_batches_to_run = util.read_bounded_integer('\nHow many batches would you like to upload? ', 0, len(unprocessed_ids))
+            num_batches_to_run = util.read_bounded_integer('\nHow many batches would you like to upload? ', 0,
+                                                           len(unprocessed_ids))
             up_ids = unprocessed_ids[:num_batches_to_run]
             if len(up_ids) > 0:
                 print('\nUpload unprocessed batches...\n')
                 self.batchAPI_upload_jobs(up_ids)
         print()
 
-        
         # process results
-        #self.bAPI_expired_batch_ids = self.macro_schedule[self.macro_schedule['status'] == 'downloaded'].batch_id.values
+        # self.bAPI_expired_batch_ids = self.macro_schedule[self.macro_schedule['status'] == 'downloaded'].batch_id.values
 
     def batchAPI_check_status(self, check_ids):
         for i in check_ids:
@@ -348,42 +385,48 @@ class Controller():
             status = response.status
             self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'status'] = status
             if status == 'completed':
-                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_output_file_id'] = response.output_file_id
-                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_error_file_id'] = response.error_file_id
+                self.macro_schedule.loc[
+                    self.macro_schedule['batch_id'] == i, 'batchAPI_output_file_id'] = response.output_file_id
+                self.macro_schedule.loc[
+                    self.macro_schedule['batch_id'] == i, 'batchAPI_error_file_id'] = response.error_file_id
         util.update_schedule(self.path_macro_schedule, self.macro_schedule)
 
     def batchAPI_retrieve_completed(self, comp_ids):
         for i in comp_ids:
             # file ids
-            curr_output_file_id = self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_output_file_id'].values[0]
-            curr_error_file_id = self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_error_file_id'].values[0]
+            curr_output_file_id = \
+                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_output_file_id'].values[0]
+            curr_error_file_id = \
+                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_error_file_id'].values[0]
 
             print(f'\nRetrieving batch {i}, output_file_id {curr_output_file_id}, error_file_id {curr_error_file_id}')
 
             # retrieve result
             result = self.bAPI_client.files.content(curr_output_file_id)
-            
+
             # write results to file
-            #print(isinstance(curr_output_file_id, str))
+            # print(isinstance(curr_output_file_id, str))
             if isinstance(curr_output_file_id, str):
                 path_out_comp = os.path.join(self.path_results, f'batch_{str(i)}_out.jsonl')
                 output = result.content
                 print(f"\tWriting outputs to file at: {path_out_comp}")
                 with open(path_out_comp, 'wb') as file:
                     file.write(output)
-                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_path_output_file'] = path_out_comp
+                self.macro_schedule.loc[
+                    self.macro_schedule['batch_id'] == i, 'batchAPI_path_output_file'] = path_out_comp
             # write errors to file
-            #print(isinstance(curr_error_file_id, str))
+            # print(isinstance(curr_error_file_id, str))
             if isinstance(curr_error_file_id, str):
                 path_err_comp = os.path.join(self.path_results, f'batch_{str(i)}_err.jsonl')
                 error = self.bAPI_client.files.content(curr_error_file_id).content
-                #print(error)
+                # print(error)
                 print(f"\tWritin errors to file at: {path_err_comp}")
                 with open(path_err_comp, 'wb') as file:
                     file.write(error)
-                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_path_error_file'] = path_err_comp
+                self.macro_schedule.loc[
+                    self.macro_schedule['batch_id'] == i, 'batchAPI_path_error_file'] = path_err_comp
             self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'status'] = 'downloaded'
-            
+
         util.update_schedule(self.path_macro_schedule, self.macro_schedule)
 
     def batchAPI_upload_jobs(self, new_ids):
@@ -392,33 +435,33 @@ class Controller():
             path_curr_input = self.macro_schedule.loc[self.macro_schedule.batch_id == i, "path_batchAPI_job"].values[0]
 
             batch_file = self.bAPI_client.files.create(
-                file = open(path_curr_input, 'rb'),
-                purpose = 'batch'
+                file=open(path_curr_input, 'rb'),
+                purpose='batch'
             )
             self.macro_schedule.loc[self.macro_schedule.batch_id == i, "batchAPI_input_file_id"] = batch_file.id
             cur_file_id = self.macro_schedule.loc[self.macro_schedule.batch_id == i, "batchAPI_input_file_id"].values[0]
 
             # create batch job
             batch_job = self.bAPI_client.batches.create(
-                input_file_id = cur_file_id,
-                endpoint = self.meta.batchAPI_endpoint,
+                input_file_id=cur_file_id,
+                endpoint=self.meta.batchAPI_endpoint,
                 completion_window=self.meta.batchAPI_completion_window
             )
             self.macro_schedule.loc[self.macro_schedule.batch_id == i, "batchAPI_batch_id"] = batch_job.id
 
             self.macro_schedule.loc[self.macro_schedule.batch_id == i, "status"] = 'uploaded'
         util.update_schedule(self.path_macro_schedule, self.macro_schedule)
-        
 
     def aggregate_batch_results(self):
-        if not util.check_files_in_directory(self.path_results) or not util.read_character_yes_no('Would you like to aggregate the batched results?'):
+        if not util.check_files_in_directory(self.path_results) or not util.read_character_yes_no(
+                'Would you like to aggregate the batched results?'):
             return 0
         batch_result_files = [os.path.join(self.path_results, batch) for batch in os.listdir(self.path_results)]
         agg_df = None
         for path in batch_result_files:
             curr_df = pd.read_csv(path)
             agg_df = pd.concat([agg_df, curr_df]) if isinstance(agg_df, pd.DataFrame) else curr_df
-            #util.delete_file(path)
+            # util.delete_file(path)
         agg_df.reset_index(drop=True, inplace=True)
         agg_df.to_csv(os.path.join(self.path_results, 'agg_results.csv'), index=False)
 
@@ -428,14 +471,15 @@ class Controller():
 
         for i in down_ids:
             curr_df = pd.DataFrame()
-            curr_path = self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_path_output_file'].values[0]
-            
+            curr_path = \
+                self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_path_output_file'].values[0]
+
             doc_id = []
             prompt_tokens = []
             comp_tokens = []
             finish_reason = []
             answer = []
-            
+
             with open(curr_path, 'rb') as file:
                 for line in file:
                     jobj = json.loads(line)
@@ -445,38 +489,37 @@ class Controller():
                     finish_reason.append(jobj['response']['body']['choices'][0]['finish_reason'])
                     answer.append(jobj['response']['body']['choices'][0]['message']['content'])
 
-            curr_df = pd.DataFrame({'doc_id': doc_id, 
-                                'output': answer, 
-                                'finish_reason': finish_reason, 
-                                'true_total_prompt_tokens': prompt_tokens, 
-                                'completion_tokens': comp_tokens})
-            
-            curr_df[self.answer_labels] = curr_df.apply(lambda x: util.expand_output(x.output, self.meta.gpt_answer_keys), axis=1, result_type='expand')
-            
+            curr_df = pd.DataFrame({'doc_id': doc_id,
+                                    'output': answer,
+                                    'finish_reason': finish_reason,
+                                    'true_total_prompt_tokens': prompt_tokens,
+                                    'completion_tokens': comp_tokens})
+
+            curr_df[self.answer_labels] = curr_df.apply(
+                lambda x: util.expand_output(x.output, self.meta.gpt_answer_keys), axis=1, result_type='expand')
+
             curr_df.to_csv(os.path.join(self.path_results, f'batch_{i}.csv'), index=False)
 
             self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'status'] = 'processed'
             util.update_schedule(self.path_macro_schedule, self.macro_schedule)
-        
+
         if util.read_character_yes_no('Would you like to aggregate the batched results?'):
-            batch_result_files = [os.path.join(self.path_results, 
-                                               batch) for batch in os.listdir(self.path_results) if ((batch.startswith('batch')) and (batch.endswith('csv')))]
+            batch_result_files = [os.path.join(self.path_results,
+                                               batch) for batch in os.listdir(self.path_results) if
+                                  ((batch.startswith('batch')) and (batch.endswith('csv')))]
             agg_df = None
             for path in batch_result_files:
                 curr_df = pd.read_csv(path)
                 agg_df = pd.concat([agg_df, curr_df]) if isinstance(agg_df, pd.DataFrame) else curr_df
 
             if util.read_character_yes_no('Would you like to add the gpt_prompts to the aggregate results?'):
-                tmp_micro = self.micro_schedule[self.micro_schedule.doc_id.isin(agg_df.doc_id)][['doc_id', 'doc_path']].copy()
+                tmp_micro = self.micro_schedule[self.micro_schedule.doc_id.isin(agg_df.doc_id)][
+                    ['doc_id', 'doc_path']].copy()
                 agg_df = pd.merge(agg_df, tmp_micro, how='left', on='doc_id')
                 agg_df['prompt'] = agg_df['doc_path'].apply(util.read_prompt_for_agg_res)
-        
- 
+
             agg_df.reset_index(drop=True, inplace=True)
             agg_df.to_csv(os.path.join(self.path_results, 'agg_results.csv'), index=False)
-                        
-            
-        
 
     def process_batches(self):
         with Pool(processes=self.num_workers) as pool:
@@ -494,17 +537,19 @@ class Controller():
                                                      self.user_assistant,
                                                      self.meta.model,
                                                      self.answer_labels,
-                                                     #self.gpt_source_keys,
+                                                     # self.gpt_source_keys,
                                                      self.gpt_answer_keys,
                                                      self.path_results,
                                                      self.path_macro_schedule,
                                                      ))
-                #print(res.get())
+                # print(res.get())
             pool.close()
             pool.join()
 
         print(f"\n\tAll desired batches processed.\n")
-        self.meta.number_unprocessed_batches = self.macro_schedule[self.macro_schedule['status'] == 'unprocessed'].shape[0]
+        self.meta.number_unprocessed_batches = \
+            self.macro_schedule[self.macro_schedule['status'] == 'unprocessed'].shape[0]
+
 
 def process_batch(batch_id,
                   df_segment,
@@ -516,7 +561,7 @@ def process_batch(batch_id,
                   user_assistant,
                   model,
                   answer_labels,
-                  #source_keys,
+                  # source_keys,
                   answer_keys,
                   path_results,
                   ):
@@ -538,9 +583,10 @@ def process_batch(batch_id,
     df_input.drop(['doc_path'], axis=1, inplace=True)
 
     # process json answer
-    #df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, answer_keys), axis=1, result_type='expand')
-    #df_input[answer_labels] = df_input.apply(lambda x: util.expand_output2(x.output, answer_keys), axis=1, result_type='expand')
-    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output3(x.output, answer_keys), axis=1, result_type='expand')
+    # df_input[answer_labels] = df_input.apply(lambda x: util.expand_output(x.output, answer_keys), axis=1, result_type='expand')
+    # df_input[answer_labels] = df_input.apply(lambda x: util.expand_output2(x.output, answer_keys), axis=1, result_type='expand')
+    df_input[answer_labels] = df_input.apply(lambda x: util.expand_output3(x.output, answer_keys), axis=1,
+                                             result_type='expand')
     # save dataframe as csv
     df_input.to_csv(os.path.join(path_results, f'batch_{str(batch_id)}.csv'), index=False)
     return True
@@ -558,7 +604,7 @@ def worker(unprocessed_batch_ids,
            user_assistant,
            model,
            answer_labels,
-           #source_keys,
+           # source_keys,
            answer_keys,
            path_results,
            path_macro_schedules,
@@ -580,11 +626,10 @@ def worker(unprocessed_batch_ids,
                                user_assistant,
                                model,
                                answer_labels,
-                               #source_keys,
+                               # source_keys,
                                answer_keys,
                                path_results,
                                )
-
 
         with lock:
             processed_batch_ids.append(batch_id)

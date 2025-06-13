@@ -21,7 +21,6 @@ class Meta:
                  file_input_file_ids,
                  schedule_batch_size,
                  max_tokens_allowed,
-                 #gpt_source_keys,
                  gpt_answer_keys,
                  prompt_system,
                  prompt_instructions

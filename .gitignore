@@ -12,9 +12,11 @@
 /data/outputs/*
 /data/raw_files/*
 /data/schedules/*
+/data/batchAPI_jobs/*
 
 /activate_venv.bat
 
 /old/*
-/FS_Examples_Preper.ipynb
+/FS_Example_Preper.ipynb
 /PostProcessing.ipynb
+/SAFE/*

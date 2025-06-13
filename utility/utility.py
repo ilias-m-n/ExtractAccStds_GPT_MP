@@ -504,13 +504,60 @@ def prep_fs_examples(df, id_col, paragraph_col, sentence_col, standard_col, incl
     else:
         if flag_user_assistant:
             user_assistant = get_user_assistant_context_ext(df, paragraph_col, sentence_col,
-                                                        standard_col, incl_sentence, doc_ent_col, incl_doc_entity)
+                                                        standard_col, incl_sentence, doc_ent_col)
         else:
             prompt_examples = get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col,
-                                                  incl_sentence, base_prompt, doc_ent_col, incl_doc_entity)
+                                                  incl_sentence, base_prompt, doc_ent_col)
     
     
     return user_assistant, prompt_examples
+
+
+def get_user_assistant_context_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, doc_ent_col):
+    user_assistant = []
+
+    for i, row in df.iterrows():
+
+        user_content = row[paragraph_col]
+        assistant_content = ''
+
+        for n in range(len(row[sentence_col])):
+            curr_ac = {
+                'doc': row[doc_ent_col][n].split(';'),
+                'sentence': row[sentence_col][n].split(';'),
+                'term': row[standard_col][n].split(';')
+            }
+
+            assistant_content += json.dumps(curr_ac) + '\n\n'
+
+        user_assistant.append((user_content, assistant_content))
+
+    return user_assistant
+
+def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, base, doc_ent_col):
+    examples = "base"
+
+    for i, row in df.iterrows():
+
+        examples += "\nExample " + str(i) + ":\n"
+
+        user_content = row[paragraph_col]
+
+        assistant_content = ''
+
+        for n in range(len(row[sentence_col])):
+            curr_ac = {
+                'doc': row[doc_ent_col][n].split(';'),
+                'sentence': row[sentence_col][n].split(';'),
+                'term': row[standard_col][n].split(';')
+            }
+
+            assistant_content += json.dumps(curr_ac) + '\n'
+
+        examples += user_content + "\nAnswer " + str(i) + ":\n"
+        examples += assistant_content + '\n'
+
+    return examples
 
 def get_user_assistant_context(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence, doc_ent_col, incl_doc_entity):
     user_assistant = []
@@ -564,51 +611,7 @@ def get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col, i
 
     return examples
 
-def get_user_assistant_context_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, doc_ent_col, incl_doc_entity):
-    user_assistant = []
-    
-    for i, row in df.iterrows():
-        
-        user_content = row[paragraph_col]
-        assistant_content = ''
 
-        for n in range(len(row[sentence_col])):
-            curr_ac = {
-                'doc': row[doc_ent_col][n].split(';'),
-                'sentence': row[sentence_col][n].split(';'),
-                'term': row[standard_col][n].split(';')
-            }
-    
-            assistant_content += json.dumps(curr_ac) + '\n\n'
-    
-        user_assistant.append((user_content, assistant_content))
-
-    return user_assistant
-
-def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, base, doc_ent_col, incl_doc_entity):
-    examples = "base"
-    
-    for i, row in df.iterrows():
-    
-        examples += "\nExample " + str(i) + ":\n"
-        
-        user_content = row[paragraph_col]
-        
-        assistant_content = ''
-            
-        for n in range(len(row[sentence_col])):
-            curr_ac = {
-                'doc': row[doc_ent_col][n].split(';'),
-                'sentence': row[sentence_col][n].split(';'),
-                'term': row[standard_col][n].split(';')
-            }
-    
-            assistant_content += json.dumps(curr_ac) + '\n'
-    
-        examples += user_content + "\nAnswer " + str(i) + ":\n"
-        examples += assistant_content + '\n'
-        
-    return examples
 
 
 
