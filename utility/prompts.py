@@ -21,11 +21,11 @@ it is actually in the provided text and when you find a document type and term m
 task_descr_auditor_13 = """
 You are given a segment from a company’s report. Your task is to extract, based on the auditor’s opinion, which accounting standards, rules, practices, principles, or acts were used to prepare specific document types. Follow the instructions below strictly.
 
-🎯Target document types (variations allowed):
-- Financial statements
-- Consolidated financial statements
-- Financial report
-- Annual report
+🎯Target document types (including close variants and extensions):
+- financial statements (including forms such as “financial statements of the company,” “company financial statements”)
+- consolidated financial statements (including forms such as “consolidated financial statements for the group”)
+- financial report (including forms such as “company financial report”)
+- annual report (including forms such as “annual report of the group”)
 
 📌 Extraction Criteria:
 - Identify and include only sentences that explicitly state the accounting standards used to prepare one of the above document types.
@@ -49,12 +49,11 @@ You are given a segment from a company’s report. Your task is to extract, base
 task_descr_notes_7 = """
 You are given a segment from a company’s report. Your task is to extract, based on general report statements (not from an auditor), which accounting standards, rules, practices, principles, or acts were used to prepare specific document types. Follow the instructions below strictly.
 
-🎯 Target document types (variations allowed):
-
- - Financial statements
- - Consolidated financial statements
- - Financial report
- - Annual report
+🎯Target document types (including close variants and extensions):
+- financial statements (including forms such as “financial statements of the company,” “company financial statements”)
+- consolidated financial statements (including forms such as “consolidated financial statements for the group”)
+- financial report (including forms such as “company financial report”)
+- annual report (including forms such as “annual report of the group”)
 
 📌 Extraction Criteria:
  - Identify and include only sentences that explicitly state the accounting standards used to prepare one of the above document types.
@@ -120,19 +119,6 @@ Answer in the following JSON format:
  "term" : ["1st accounting standard/rule/act"; ...; "k-th accounting standard/rule/act"]}
 """
 
-answer_format_split_5 = """
-Answer in the following JSON format:
-{"sentence" : ["sentence from which you extracted the accounting standard, rule, or act"],
- "doc" : ["1st document type"],
- "term" : ["1st accounting standard/rule/act", ..., "n-th accounting standard/rule/act"]}
-
- ...
-
-{"sentence" : ["sentence from which you extracted the accounting standard/rule/or act"],
- "doc" : ["m-th document type"],
- "term" : ["1st accounting standard/rule/act", ..., "k-th accounting standard/rule/act"]}
-"""
-
 answer_format_split_6 = """
 📤 Output Format (JSON, repeat block for each found and valid document type):
 {
@@ -151,16 +137,6 @@ Please follow these instructions:
 3) Extract the sentences and their desired document types and terms.
 4) Make sure that the term you extract is actually contained in the provided report segment and the sentence you found.
 5) Make sure that each sentence abides by the rules mentioned above else reconsider.
-6) List each sentence with its contained document type and terms in the below json format.
-"""
-
-instruction_7 = """
-Please follow these instructions:
-1) First read the section of the company's report provided.
-2) Second find the sentences that contain the desired information.
-3) Extract the sentences and their desired document types and terms.
-4) Make sure that the term you extract is actually contained in the provided report segment and the sentence you found.
-5) Make sure that each sentence abides by the rules mentioned above the instruction, otherwise remove it.
 6) List each sentence with its contained document type and terms in the below json format.
 """
 
