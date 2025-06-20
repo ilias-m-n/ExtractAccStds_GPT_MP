@@ -59,8 +59,8 @@ class Controller():
                                     'o3-mini-2025-01-31': 0.0011,  # o3-mini
                                     'gpt-4.1-2025-04-14': 0.002,  # gpt-4.1
                                     'gpt-4.1-mini-2025-04-14': 0.0004,  # gpt-4.1-mini
-                                    'gpt-4.1-nano-2025-04-14': 0.0001,  # gpt-4.1-nano
-                                    'gpt-4.5-preview-2025-02-27': 0.075}  # gpt-4.5-preview
+                                    'gpt-4.1-nano-2025-04-14': 0.0001 # gpt-4.1-nano
+                                    }
 
         cost_per_1k_tokens_batchAPI = {"gpt-3.5-turbo-0125": 0.00025,  # gpt-3.5-turbo
                                        "gpt-4-turbo-2024-04-09": 0.005,  # gpt-4-turbo
@@ -74,8 +74,7 @@ class Controller():
                                        'o3-mini-2025-01-31': 0.00055,  # o3-mini
                                        'gpt-4.1-2025-04-14': 0.001,  # gpt-4.1
                                        'gpt-4.1-mini-2025-04-14': 0.0002,  # gpt-4.1-mini
-                                       'gpt-4.1-nano-2025-04-14': 0.00005,  # gpt-4.1-nano
-                                       'gpt-4.5-preview-2025-02-27': 0.0375}  # gpt-4.5-preview
+                                       'gpt-4.1-nano-2025-04-14': 0.00005}  # gpt-4.1-nano
 
         cost_per_1k_tokens = {'default': cost_per_1k_tokens_synch, 'batchAPI': cost_per_1k_tokens_batchAPI}
 

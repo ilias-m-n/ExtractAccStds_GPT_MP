@@ -38,7 +38,6 @@ def read_meta_config():
         overlay = config._overlay
         schedule_batch_size = config._schedule_batch_size
         max_tokens_allowed = config._max_tokens_allowed
-        #gpt_source_keys = config._gpt_source_keys
         gpt_answer_keys = config._gpt_answer_keys
         prompt_system = config._prompt_system
         prompt_instructions = config._prompt_instructions
@@ -72,7 +71,6 @@ def read_meta_config():
                     file_input_file_ids,
                     schedule_batch_size,
                     max_tokens_allowed,
-                    #gpt_source_keys,
                     gpt_answer_keys,
                     prompt_system,
                     prompt_instructions)
