@@ -73,6 +73,7 @@ def count_tokens(text: str, encoding: str = "cl100k_base") -> int:
 def parse_txt(file_path: str, return_if_none="") -> str:
     res = return_if_none
     # first check whether file exists
+    #print(file_path)
     if os.path.isfile(file_path):
         try:
             with open(file_path, "r", encoding='utf-8') as file:
@@ -323,98 +324,6 @@ def all_keys_present(dictionary, keys):
 def split_dicts_string(input_string):
     dict_strings = re.findall(r'\{[^{}]*\}', input_string)
     return dict_strings
-'''
-def expand_output(output, answer_keys):
-    """
-    answer_codes:
-        0: answer readable
-        1: answer not correctly formatted in json
-        2: not all answers keys present
-    """
-    out_dict = None
-    answer_code = 0
-    len_answer = len(answer_keys) #* len(source_keys)
-    answers = list()
-
-    # check output format
-    try:
-        out_dict = json.loads(output)
-    except ValueError:
-        answer_code = 1
-        return *[None for _ in range(len_answer)], answer_code
-
-    if not isinstance(out_dict, dict):
-        answer_code = 1
-        return *[None for _ in range(len_answer)], answer_code
-
-    # check whether all answer keys present in answer dicts
-    if not all_keys_present(out_dict, answer_keys):
-        answer_code = 2
-
-    for a in answer_keys:
-        answers.append(out_dict.get(a, None))
-
-    return *answers, answer_code
-
-def expand_output2(output, answer_keys):
-    """
-    answer_codes:
-        0: answer readable
-        1: no dictionary found in output
-        2: individual answer not correctly formatted in json
-        3: individual answer not correctly formatted as dictionary
-        4: individual answer not all answers keys present
-
-    """
-    len_answer = len(answer_keys)
-    
-    answers = {key:[] for key in range(len_answer)}
-    answer_codes = list()
-
-    answer_dicts = split_dicts_string(output)
-    if len(answer_dicts) == 0:
-        answer_codes = [1]
-        return *[None for _ in range(len_answer)], answer_codes
-
-    # check output format
-    for dict_s in answer_dicts:
-        out_dict = None
-        try:
-            mod_dict_s = re.sub(r',\s*\n?\s*}', '}', dict_s)
-            out_dict = json.loads(mod_dict_s)
-        except ValueError:
-            answer_codes.append(2)
-            for key in range(len_answer):
-                answers[key].append("None")
-            continue
-
-        if not isinstance(out_dict, dict):
-            answer_codes.append(3)
-            for key in range(len_answer):
-                answers[key].append("None")
-
-        # check whether all answer keys present in answer dicts
-        if not all_keys_present(out_dict, answer_keys):
-            answer_codes.append(4)
-            for key in range(len_answer):
-                answers[key].append("None")
-        
-        flag_answer_code = False
-        for i, a in enumerate(answer_keys):
-            answers[i].append(out_dict.get(a, "None"))
-            if flag_answer_code:
-                continue
-            answer_codes.append(0)
-            flag_answer_code = True
-
-    #print(answers)
-    #for key in answers:
-    #    if answers[key] == None:
-    #        answers[key] = ""
-    answers = ["; ".join(answers[key]) for key in answers]
-
-    return *answers, answer_codes
-'''
 
 def clean_json_string(json_str):
     # Regular expression to match non-printable characters
@@ -423,74 +332,23 @@ def clean_json_string(json_str):
     # Substitute non-printable characters with an empty string
     return non_printable_regex.sub('', json_str)
 
-def expand_output(output, answer_keys):
-    """
-    answer_codes:
-        0: answer readable
-        1: no dictionary found in output
-        2: individual answer not correctly formatted in json
-        3: individual answer not correctly formatted as dictionary
-        4: individual answer not all answers keys present
+def expand_output(output):
+    docs = []
+    terms = []
+    sentences = []
+    for k, item in output.items():
+        docs.append(item['doc'])
+        terms.append(item['term'])
+        sentences.append(item['sentence'])
 
-    """
-
-    output = clean_json_string(output)
-    
-    len_answer = len(answer_keys)
-    
-    answers = {key:[] for key in range(len_answer)}
-    answer_codes = list()
-
-    answer_dicts = split_dicts_string(output)
-    if len(answer_dicts) == 0:
-        answer_codes = [1]
-        return *[None for _ in range(len_answer)], answer_codes
-
-    # check output format
-    for dict_s in answer_dicts:
-        out_dict = None
-        try:
-            mod_dict_s = re.sub(r',\s*\n?\s*}', '}', dict_s)
-            out_dict = json.loads(mod_dict_s)
-        except ValueError:
-            answer_codes.append(2)
-            for key in range(len_answer):
-                answers[key].append("None")
-            continue
-
-        #print(out_dict)
-
-        if not isinstance(out_dict, dict):
-            answer_codes.append(3)
-            for key in range(len_answer):
-                answers[key].append("None")
-
-        # check whether all answer keys present in answer dicts
-        if not all_keys_present(out_dict, answer_keys):
-            answer_codes.append(4)
-            for key in range(len_answer):
-                answers[key].append("None")
-        
-        flag_answer_code = False
-        for i, a in enumerate(answer_keys):
-            #print(i, a, out_dict.get(a, "None"))
-            answers[i].append(out_dict.get(a, "None"))
-            if flag_answer_code:
-                continue
-            answer_codes.append(0)
-            flag_answer_code = True
-
-    answers = [(answers[key]) for key in answers]
-    #print(answers)
-
-    return *answers, answer_codes
+    return [docs, terms, sentences]
 
 
 
 # Task specific
 def prep_fs_examples(df, id_col, paragraph_col, sentence_col, standard_col, incl_sentence,
                      doc_ent_col, incl_doc_entity, flag_user_assistant,
-                     flag_segmented, base_prompt="", flag_ext_examples = False):
+                     flag_segmented, flag_ext_examples = False):
     user_assistant = None
     prompt_examples = ""
 
@@ -500,26 +358,26 @@ def prep_fs_examples(df, id_col, paragraph_col, sentence_col, standard_col, incl
                                                         standard_col, incl_sentence, doc_ent_col, incl_doc_entity)
         else:
             prompt_examples = get_examples_prompt(df, id_col, paragraph_col, sentence_col, standard_col,
-                                                  incl_sentence, base_prompt, doc_ent_col, incl_doc_entity)
+                                                  incl_sentence, doc_ent_col, incl_doc_entity)
     else:
         if flag_user_assistant:
             user_assistant = get_user_assistant_context_ext(df, paragraph_col, sentence_col,
-                                                        standard_col, incl_sentence, doc_ent_col)
+                                                        standard_col, doc_ent_col)
         else:
             prompt_examples = get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col,
-                                                  incl_sentence, base_prompt, doc_ent_col)
+                                                  incl_sentence, doc_ent_col)
     
     
     return user_assistant, prompt_examples
 
 
-def get_user_assistant_context_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, doc_ent_col):
+def get_user_assistant_context_ext(df, paragraph_col, sentence_col, standard_col, doc_ent_col):
     user_assistant = []
 
     for i, row in df.iterrows():
 
         user_content = row[paragraph_col]
-        assistant_content = ''
+        assistant_content = {}
 
         for n in range(len(row[sentence_col])):
             curr_ac = {
@@ -527,14 +385,15 @@ def get_user_assistant_context_ext(df, paragraph_col, sentence_col, standard_col
                 'sentence': row[sentence_col][n].split(';'),
                 'term': row[standard_col][n].split(';')
             }
+            assistant_content[n] = curr_ac
 
-            assistant_content += json.dumps(curr_ac) + '\n\n'
+        assistant_content = json.dumps(assistant_content)
 
         user_assistant.append((user_content, assistant_content))
 
     return user_assistant
 
-def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, base, doc_ent_col):
+def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_sentence, doc_ent_col):
     examples = "base"
 
     for i, row in df.iterrows():
@@ -543,7 +402,7 @@ def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_
 
         user_content = row[paragraph_col]
 
-        assistant_content = ''
+        assistant_content = {}
 
         for n in range(len(row[sentence_col])):
             curr_ac = {
@@ -551,8 +410,9 @@ def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_
                 'sentence': row[sentence_col][n].split(';'),
                 'term': row[standard_col][n].split(';')
             }
+            assistant_content[n] = curr_ac
 
-            assistant_content += json.dumps(curr_ac) + '\n'
+        assistant_content += json.dumps(assistant_content)
 
         examples += user_content + "\nAnswer " + str(i) + ":\n"
         examples += assistant_content + '\n'
@@ -686,6 +546,12 @@ def get_examples_prompt_segmented(df, paragraph_col, sentence_col, standard_col,
     return examples
 
 
+# log probs
 
+def calc_overall_seq_logprob(logprobs) -> float:
+    res = 0.0
+    for term in logprobs:
+        res += term.get('logprob', 0.0)
+    return res
 
 # legacy

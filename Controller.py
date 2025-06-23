@@ -1,8 +1,11 @@
 import os
 import sys
+import numpy as np
 import pandas as pd
 import json
 from math import isnan
+
+from Tools.demo.mcast import sender
 
 pd.set_option('display.width', None)
 from multiprocessing import Pool, Manager
@@ -98,7 +101,6 @@ class Controller():
         # JSON Output Format Keys
         self.gpt_answer_keys = self.meta.gpt_answer_keys
         self.answer_labels = [f"{a}" for a in self.gpt_answer_keys]
-        self.answer_labels += ['answer_code']
 
     def run(self):
         if self.meta.mode == 'default':
@@ -133,14 +135,11 @@ class Controller():
         self.preprocessing_and_configure_batchAPI()
         print('Process retrieved outputs...\n')
         self.process_batchAPI_outputs()
-        # print('Aggregating Results...\n')
-        # self.aggregate_batch_results_batchAPI()
         print('Done')
 
     def prep_GPT_framework(self):
         # prep fs examles
         path_fs_examples_file = os.path.join(self.path_fs_examples, self.meta.file_fs_examples)
-        # df_fs_examples = pd.read_csv(path_fs_examples_file)
         df_fs_examples = pd.read_parquet(path_fs_examples_file)
         user_assistant, fs_prompt = util.prep_fs_examples(df=df_fs_examples,
                                                           id_col='filename',
@@ -152,7 +151,6 @@ class Controller():
                                                           incl_doc_entity=self.meta.flag_incl_doc_entity,
                                                           flag_user_assistant=self.meta.flag_user_assistant,
                                                           flag_segmented=self.meta.flag_segmented,
-                                                          base_prompt=prompts.examples_base1,
                                                           flag_ext_examples=self.meta.flag_ext_examples)
 
         # prep instruction prompt elements
@@ -180,8 +178,8 @@ class Controller():
     def load_schedule(self):
         if self.meta.flag_schedule:
             self.macro_schedule = pd.read_csv(os.path.join(self.path_schedules, self.meta.file_macro_schedule))
-            self.micro_schedule = pd.read_csv(os.path.join(self.path_schedules, self.meta.file_micro_schedule))
-            self.removed_schedule = pd.read_csv(os.path.join(self.path_schedules, self.meta.file_removed_schedule))
+            self.micro_schedule = pd.read_parquet(os.path.join(self.path_schedules, self.meta.file_micro_schedule))
+            self.removed_schedule = pd.read_parquet(os.path.join(self.path_schedules, self.meta.file_removed_schedule))
             print()
         else:
             print('\tNo schedule detected...\n\tCreating new schedule...\n')
@@ -192,9 +190,9 @@ class Controller():
 
     def create_schedules(self):
         # Files
-        file_micro = f"micro_{self.meta.meta_id}.csv"
+        file_micro = f"micro_{self.meta.meta_id}.parquet"
         file_macro = f"macro_{self.meta.meta_id}.csv"
-        file_removed = f"removed_{self.meta.meta_id}.csv"
+        file_removed = f"removed_{self.meta.meta_id}.parquet"
         # Paths
         path_micro = os.path.join(self.path_schedules, file_micro)
         path_macro = os.path.join(self.path_schedules, file_macro)
@@ -207,7 +205,7 @@ class Controller():
             util.schedule_compute_cost) + self.base_prompt_token_length
         # remove examples which exceed limit
         removed_examples = micro_schedule[micro_schedule['prompt_token_length'] > self.meta.max_tokens_allowed].copy()
-        removed_examples.to_csv(path_removed, index=False)
+        removed_examples.to_parquet(path_removed, index=False)
         del removed_examples
         micro_schedule = micro_schedule[micro_schedule['prompt_token_length'] <= self.meta.max_tokens_allowed].copy()
         micro_schedule.reset_index(drop=True, inplace=True)
@@ -218,7 +216,7 @@ class Controller():
         self.micro_schedule = micro_schedule.copy()
         # Agg. to create macro schedule
         macro_schedule = micro_schedule.drop(['doc_id', 'doc_path'], axis=1).copy()
-        micro_schedule.to_csv(path_micro, index=False)
+        micro_schedule.to_parquet(path_micro, index=False)
         del micro_schedule
         macro_schedule = macro_schedule.groupby('batch_id').agg(
             num_examples=('prompt_token_length', 'count'),
@@ -271,6 +269,8 @@ class Controller():
                              "body": {"model": self.meta.model,
                                       "temperature": 0,
                                       "n": 1,
+                                      "response_format": {"type": "json_object", },
+                                      "logprobs":True,
                                       "messages": [{"role": "system", "content": self.system_prompt}]
                                       }
                              }
@@ -469,7 +469,6 @@ class Controller():
         down_ids = list(self.macro_schedule[self.macro_schedule['status'] == 'downloaded'].batch_id.values)
 
         for i in down_ids:
-            curr_df = pd.DataFrame()
             curr_path = \
                 self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'batchAPI_path_output_file'].values[0]
 
@@ -478,6 +477,7 @@ class Controller():
             comp_tokens = []
             finish_reason = []
             answer = []
+            logprobs = []
 
             with open(curr_path, 'rb') as file:
                 for line in file:
@@ -487,17 +487,48 @@ class Controller():
                     comp_tokens.append(int(jobj['response']['body']['usage']['completion_tokens']))
                     finish_reason.append(jobj['response']['body']['choices'][0]['finish_reason'])
                     answer.append(jobj['response']['body']['choices'][0]['message']['content'])
+                    logprobs.append(jobj['response']['body']['choices'][0]['logprobs'])
 
             curr_df = pd.DataFrame({'doc_id': doc_id,
                                     'output': answer,
                                     'finish_reason': finish_reason,
                                     'true_total_prompt_tokens': prompt_tokens,
-                                    'completion_tokens': comp_tokens})
+                                    'completion_tokens': comp_tokens,
+                                    'logprobs_raw': logprobs})
 
-            curr_df[self.answer_labels] = curr_df.apply(
-                lambda x: util.expand_output(x.output, self.meta.gpt_answer_keys), axis=1, result_type='expand')
 
-            curr_df.to_csv(os.path.join(self.path_results, f'batch_{i}.csv'), index=False)
+            curr_df['logprob_output'] = [util.calc_overall_seq_logprob(logprob['content']) for logprob in logprobs]
+            curr_df['probs_output'] = np.exp(curr_df['logprob_output'])
+
+            def expand_output_column(df):
+                rows = []
+                for _, row in df.iterrows():
+                    base = row.drop('output').to_dict()
+                    try:
+                        output_dict = json.loads(row['output'])
+                    except Exception:
+                        output_dict = {}
+                    output_not_empty = bool(output_dict)
+                    if not output_dict:
+                        empty_row = base.copy()
+                        empty_row['doc'] = None
+                        empty_row['term'] = None
+                        empty_row['sentence'] = None
+                        empty_row['has_result'] = False
+                        rows.append(empty_row)
+                    else:
+                        for key, val in output_dict.items():
+                            new_row = base.copy()
+                            new_row['doc'] = val.get('doc')
+                            new_row['term'] = val.get('term')
+                            new_row['sentence'] = val.get('sentence')
+                            new_row['has_result'] = True
+                            rows.append(new_row)
+                return pd.DataFrame(rows)
+
+            curr_df = expand_output_column(curr_df)
+
+            curr_df.to_parquet(os.path.join(self.path_results, f'batch_{i}.parquet'), index=False)
 
             self.macro_schedule.loc[self.macro_schedule['batch_id'] == i, 'status'] = 'processed'
             util.update_schedule(self.path_macro_schedule, self.macro_schedule)
@@ -505,18 +536,20 @@ class Controller():
         if util.read_character_yes_no('Would you like to aggregate the batched results?'):
             batch_result_files = [os.path.join(self.path_results,
                                                batch) for batch in os.listdir(self.path_results) if
-                                  ((batch.startswith('batch')) and (batch.endswith('csv')))]
+                                  ((batch.startswith('batch')) and (batch.endswith('parquet')))]
             agg_df = None
             for path in batch_result_files:
-                curr_df = pd.read_csv(path)
+                curr_df = pd.read_parquet(path)
                 agg_df = pd.concat([agg_df, curr_df]) if isinstance(agg_df, pd.DataFrame) else curr_df
 
             if util.read_character_yes_no('Would you like to add the gpt_prompts to the aggregate results?'):
                 tmp_micro = self.micro_schedule[self.micro_schedule.doc_id.isin(agg_df.doc_id)][
                     ['doc_id', 'doc_path']].copy()
                 agg_df = pd.merge(agg_df, tmp_micro, how='left', on='doc_id')
-                agg_df['prompt'] = agg_df['doc_path'].apply(util.read_prompt_for_agg_res)
+                #print(agg_df[agg_df['doc_id'].isna()])
+                #agg_df['prompt'] = agg_df['doc_path'].apply(util.read_prompt_for_agg_res)
 
+            agg_df = agg_df[['doc_id', 'doc_path', 'has_result', 'logprob_output', 'probs_output', 'doc', 'term', 'sentence']]
             agg_df.reset_index(drop=True, inplace=True)
             agg_df.to_csv(os.path.join(self.path_results, 'agg_results.csv'), index=False)
 
@@ -536,7 +569,6 @@ class Controller():
                                                      self.user_assistant,
                                                      self.meta.model,
                                                      self.answer_labels,
-                                                     # self.gpt_source_keys,
                                                      self.gpt_answer_keys,
                                                      self.path_results,
                                                      self.path_macro_schedule,

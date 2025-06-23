@@ -15,9 +15,8 @@ Select OpenAI Model
 'gpt-4.1-2025-04-14': 0.001,  # gpt-4.1
 'gpt-4.1-mini-2025-04-14': 0.0002,  # gpt-4.1-mini
 'gpt-4.1-nano-2025-04-14': 0.00005,  # gpt-4.1-nano
-'gpt-4.5-preview-2025-02-27': 0.0375
 """
-_model = "gpt-4o-2024-08-06"
+_model = "gpt-4.1-2025-04-14"
 
 """
 Batch Mode Settings
@@ -50,7 +49,7 @@ _overlay = 200 # legacy remove later across files
 """
 Schedule
 """
-_schedule_batch_size = 100
+_schedule_batch_size = 1000
 
 """
 Maximum tokens allowed per example for batch control
@@ -60,11 +59,17 @@ _max_tokens_allowed = 16000
 """
 GPT Prompting Settings
 """
-_gpt_answer_keys = ['doc', 'sentence', 'term']
+_gpt_answer_keys = ['doc', 'term', 'sentence']
 
 _prompt_system = prompts.system_context_basic1
+# old
 #_prompt_instructions = [prompts.task_descr_auditor_12, prompts.instruction_6, prompts.answer_format_split_4]
 #_prompt_instructions = [prompts.task_descr_notes_5, prompts.instruction_6, prompts.answer_format_split_4]
 
+# optimized
 #_prompt_instructions = [prompts.task_descr_auditor_13, prompts.instruction_8_audit, prompts.answer_format_split_6]
-_prompt_instructions = [prompts.task_descr_notes_7, prompts.instruction_8_notes, prompts.answer_format_split_6]
+#_prompt_instructions = [prompts.task_descr_notes_7, prompts.instruction_8_notes, prompts.answer_format_split_6]
+
+# hybrid
+_prompt_instructions = [prompts.task_descr_auditor_14, prompts.instruction_9_audit, prompts.answer_format_split_7]
+#_prompt_instructions = [prompts.task_descr_notes_8, prompts.instruction_9_notes, prompts.answer_format_split_7]
