@@ -62,7 +62,7 @@ class Controller():
                                     'o3-mini-2025-01-31': 0.0011,  # o3-mini
                                     'gpt-4.1-2025-04-14': 0.002,  # gpt-4.1
                                     'gpt-4.1-mini-2025-04-14': 0.0004,  # gpt-4.1-mini
-                                    'gpt-4.1-nano-2025-04-14': 0.0001 # gpt-4.1-nano
+                                    'gpt-4.1-nano-2025-04-14': 0.0001  # gpt-4.1-nano
                                     }
 
         cost_per_1k_tokens_batchAPI = {"gpt-3.5-turbo-0125": 0.00025,  # gpt-3.5-turbo
@@ -140,14 +140,14 @@ class Controller():
     def prep_GPT_framework(self):
         # prep fs examles
         path_fs_examples_file = os.path.join(self.path_fs_examples, self.meta.file_fs_examples)
-        df_fs_examples = pd.read_parquet(path_fs_examples_file)
+        df_fs_examples = util.parquet_nested_safe_read(path_fs_examples_file, ['docs', 'sentences', 'terms'])
         user_assistant, fs_prompt = util.prep_fs_examples(df=df_fs_examples,
                                                           id_col='filename',
                                                           paragraph_col='paragraph',
-                                                          sentence_col='sentence',
-                                                          standard_col='term',
+                                                          sentence_col='sentences',
+                                                          standard_col='terms',
                                                           incl_sentence=self.meta.flag_incl_sentence,
-                                                          doc_ent_col='doc',
+                                                          doc_ent_col='docs',
                                                           incl_doc_entity=self.meta.flag_incl_doc_entity,
                                                           flag_user_assistant=self.meta.flag_user_assistant,
                                                           flag_segmented=self.meta.flag_segmented,
@@ -164,6 +164,14 @@ class Controller():
             for ua in self.user_assistant:
                 self.base_prompt_token_length += util.count_tokens(ua[0]) + util.count_tokens(ua[1])
 
+        def expand_fs_example_printer(dic):
+            jj = json.loads(dic)
+            for doc, eles in jj.items():
+                print(doc, '\n')
+                for ele in eles:
+                    print('\t', ele["sentence"], '\n')
+                    print('\t\t', ele["terms"], '\n')
+
         if util.read_character_yes_no('Would you like to show the prompt?\n'):
             print(self.system_prompt)
         if util.read_character_yes_no('Would you like to show the simulated conversation?\n'):
@@ -173,7 +181,8 @@ class Controller():
                 print(f'{ua[0]}')
                 print()
                 print('assistant:')
-                print(f'{ua[1]}')
+                # print(f'{ua[1]}')
+                expand_fs_example_printer(ua[1])
 
     def load_schedule(self):
         if self.meta.flag_schedule:
@@ -261,7 +270,6 @@ class Controller():
 
             for batch in batch_ids:
                 path_file_curr = os.path.join(self.path_batchAPI_inputs, f'batch_job_{batch}.jsonl')
-                id_curr = f"batch_job_{batch}_no_"
                 df_curr = self.micro_schedule[self.micro_schedule.batch_id == batch]
                 temp_dict = {"custom_id": "",
                              "method": method,
@@ -270,7 +278,7 @@ class Controller():
                                       "temperature": 0,
                                       "n": 1,
                                       "response_format": {"type": "json_object", },
-                                      "logprobs":True,
+                                      "logprobs": True,
                                       "messages": [{"role": "system", "content": self.system_prompt}]
                                       }
                              }
@@ -286,7 +294,10 @@ class Controller():
                 with open(path_file_curr, 'w', encoding='utf-8') as file:
                     for index, row in df_curr.iterrows():
                         temp_dict['custom_id'] = str(row['doc_id'])
-                        temp_dict['body']["messages"][-1]['content'] = util.prep_single_input(row["doc_path"])
+                        tmp_prompt = util.prep_single_input(row["doc_path"])
+                        if len(tmp_prompt) == 0:
+                            continue
+                        temp_dict['body']["messages"][-1]['content'] = tmp_prompt
                         file.write(json.dumps(temp_dict) + '\n')
                 self.macro_schedule.loc[self.macro_schedule.batch_id == batch, "path_batchAPI_job"] = path_file_curr
             util.update_schedule(self.path_macro_schedule, self.macro_schedule)
@@ -496,7 +507,6 @@ class Controller():
                                     'completion_tokens': comp_tokens,
                                     'logprobs_raw': logprobs})
 
-
             curr_df['logprob_output'] = [util.calc_overall_seq_logprob(logprob['content']) for logprob in logprobs]
             curr_df['probs_output'] = np.exp(curr_df['logprob_output'])
 
@@ -505,25 +515,30 @@ class Controller():
                 for _, row in df.iterrows():
                     base = row.drop('output').to_dict()
                     try:
+                        # print('1:', row['output'])
                         output_dict = json.loads(row['output'])
+                        # print('2:', output_dict)
+                        # print('------------------------------')
                     except Exception:
                         output_dict = {}
-                    output_not_empty = bool(output_dict)
                     if not output_dict:
                         empty_row = base.copy()
                         empty_row['doc'] = None
-                        empty_row['term'] = None
                         empty_row['sentence'] = None
+                        empty_row['terms'] = None
                         empty_row['has_result'] = False
                         rows.append(empty_row)
                     else:
                         for key, val in output_dict.items():
-                            new_row = base.copy()
-                            new_row['doc'] = val.get('doc')
-                            new_row['term'] = val.get('term')
-                            new_row['sentence'] = val.get('sentence')
-                            new_row['has_result'] = True
-                            rows.append(new_row)
+                            doc = key
+                            for ele in val:
+                                new_row = base.copy()
+                                new_row['doc'] = doc
+                                new_row['sentence'] = ele.get('sentence', '')
+                                new_row['terms'] = ele.get('terms', [])
+                                new_row['has_result'] = True
+                                rows.append(new_row)
+
                 return pd.DataFrame(rows)
 
             curr_df = expand_output_column(curr_df)
@@ -546,10 +561,15 @@ class Controller():
                 tmp_micro = self.micro_schedule[self.micro_schedule.doc_id.isin(agg_df.doc_id)][
                     ['doc_id', 'doc_path']].copy()
                 agg_df = pd.merge(agg_df, tmp_micro, how='left', on='doc_id')
-                #print(agg_df[agg_df['doc_id'].isna()])
-                #agg_df['prompt'] = agg_df['doc_path'].apply(util.read_prompt_for_agg_res)
+                # print(agg_df[agg_df['doc_id'].isna()])
+                agg_df['prompt'] = agg_df['doc_path'].apply(util.read_prompt_for_agg_res)
 
-            agg_df = agg_df[['doc_id', 'doc_path', 'has_result', 'logprob_output', 'probs_output', 'doc', 'term', 'sentence']]
+                agg_df = agg_df[
+                    ['doc_id', 'doc_path', 'has_result', 'logprob_output', 'probs_output', 'doc', 'terms', 'sentence',
+                     'prompt']]
+            else:
+                agg_df = agg_df[
+                    ['doc_id', 'doc_path', 'has_result', 'logprob_output', 'probs_output', 'doc', 'terms', 'sentence']]
             agg_df.reset_index(drop=True, inplace=True)
             agg_df.to_csv(os.path.join(self.path_results, 'agg_results.csv'), index=False)
 

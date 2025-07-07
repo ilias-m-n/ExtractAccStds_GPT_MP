@@ -37,19 +37,19 @@ Few shot settings
 _flag_incl_sentence = True
 _flag_incl_doc_entity = True
 _flag_user_assistant = True
-_flag_segmented = False # legacy remove later across files
+_flag_segmented = False  # legacy remove later across files
 _flag_ext_examples = True
 
 """
 Segmentation Settings
 """
 _max_token_num = 15_900
-_overlay = 200 # legacy remove later across files
+_overlay = 200  # legacy remove later across files
 
 """
 Schedule
 """
-_schedule_batch_size = 1000
+_schedule_batch_size = 100
 
 """
 Maximum tokens allowed per example for batch control
@@ -62,14 +62,18 @@ GPT Prompting Settings
 _gpt_answer_keys = ['doc', 'term', 'sentence']
 
 _prompt_system = prompts.system_context_basic1
+
+# _prompt_instructions = [prompts.task_descr_auditor_15, prompts.answer_format_8]
+_prompt_instructions = [prompts.task_descr_notes_15, prompts.answer_format_8]
+
 # old
-#_prompt_instructions = [prompts.task_descr_auditor_12, prompts.instruction_6, prompts.answer_format_split_4]
-#_prompt_instructions = [prompts.task_descr_notes_5, prompts.instruction_6, prompts.answer_format_split_4]
+# _prompt_instructions = [prompts.task_descr_auditor_12, prompts.instruction_6, prompts.answer_format_split_4]
+# _prompt_instructions = [prompts.task_descr_notes_5, prompts.instruction_6, prompts.answer_format_split_4]
 
 # optimized
-#_prompt_instructions = [prompts.task_descr_auditor_13, prompts.instruction_8_audit, prompts.answer_format_split_6]
-#_prompt_instructions = [prompts.task_descr_notes_7, prompts.instruction_8_notes, prompts.answer_format_split_6]
+# _prompt_instructions = [prompts.task_descr_auditor_13, prompts.instruction_8_audit, prompts.answer_format_split_6]
+# _prompt_instructions = [prompts.task_descr_notes_7, prompts.instruction_8_notes, prompts.answer_format_split_6]
 
 # hybrid
-_prompt_instructions = [prompts.task_descr_auditor_14, prompts.instruction_9_audit, prompts.answer_format_split_7]
-#_prompt_instructions = [prompts.task_descr_notes_8, prompts.instruction_9_notes, prompts.answer_format_split_7]
+# _prompt_instructions = [prompts.task_descr_auditor_14, prompts.instruction_9_audit, prompts.answer_format_split_7]
+# _prompt_instructions = [prompts.task_descr_notes_8, prompts.instruction_9_notes, prompts.answer_format_split_7]

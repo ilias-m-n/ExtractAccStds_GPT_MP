@@ -18,6 +18,35 @@ from tiktoken import get_encoding
 from . import Meta
 from . import text_cleaning as tc
 
+def parquet_nested_safe_read(file_path, columns):
+    """
+    Reads a Parquet file and converts specified columns from JSON strings to lists.
+
+    Parameters:
+    - columns: List of column names to convert from JSON strings.
+    - file_path: Path to the input Parquet file.
+
+    Returns:
+    - DataFrame with specified columns converted to lists.
+    """
+    df = pd.read_parquet(file_path)
+    for col in columns:
+        df[col] = df[col].apply(json.loads)
+    return df
+
+def parquet_nested_safe_write(df, file_path, columns):
+    """
+    Writes a DataFrame to a Parquet file with specified columns as JSON strings.
+
+    Parameters:
+    - df: DataFrame to write.
+    - columns: List of column names to convert to JSON strings.
+    - file_path: Path to the output Parquet file.
+    """
+    for col in columns:
+        df[col] = df[col].apply(json.dumps)
+    df.to_parquet(file_path, index=False)
+
 # File Dialog
 def select_file(path, title):
     root = Tk()
@@ -332,6 +361,21 @@ def clean_json_string(json_str):
     # Substitute non-printable characters with an empty string
     return non_printable_regex.sub('', json_str)
 
+def pp_sent(t):
+    t.lower()
+    t = tc.remove_extra_spaces(t)
+    return t
+
+def pp_doc(t):
+    t.lower()
+    t = tc.remove_extra_spaces(t)
+    return t
+
+def pp_term(t):
+    t.lower()
+    t = tc.remove_extra_spaces(t)
+    return t
+
 def expand_output(output):
     docs = []
     terms = []
@@ -379,13 +423,10 @@ def get_user_assistant_context_ext(df, paragraph_col, sentence_col, standard_col
         user_content = row[paragraph_col]
         assistant_content = {}
 
-        for n in range(len(row[sentence_col])):
-            curr_ac = {
-                'doc': row[doc_ent_col][n].split(';'),
-                'sentence': row[sentence_col][n].split(';'),
-                'term': row[standard_col][n].split(';')
-            }
-            assistant_content[n] = curr_ac
+        for d in range(len(row[doc_ent_col])):
+            assistant_content[row[doc_ent_col][d]] = []
+            for s in range(len(row[sentence_col][d])):
+                assistant_content[row[doc_ent_col][d]].append({'sentence':row[sentence_col][d][s], 'terms': row[standard_col][d][s]})
 
         assistant_content = json.dumps(assistant_content)
 
@@ -404,15 +445,13 @@ def get_examples_prompt_ext(df, paragraph_col, sentence_col, standard_col, incl_
 
         assistant_content = {}
 
-        for n in range(len(row[sentence_col])):
-            curr_ac = {
-                'doc': row[doc_ent_col][n].split(';'),
-                'sentence': row[sentence_col][n].split(';'),
-                'term': row[standard_col][n].split(';')
-            }
-            assistant_content[n] = curr_ac
+        for d in range(len(row[doc_ent_col])):
+            assistant_content[row[doc_ent_col][d]] = []
+            for s in range(len(row[sentence_col][d])):
+                assistant_content[row[doc_ent_col][d]].append(
+                    {'sentence': row[sentence_col][d][s], 'terms': row[standard_col][d][s]})
 
-        assistant_content += json.dumps(assistant_content)
+        assistant_content = json.dumps(assistant_content)
 
         examples += user_content + "\nAnswer " + str(i) + ":\n"
         examples += assistant_content + '\n'

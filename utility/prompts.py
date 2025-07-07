@@ -5,6 +5,99 @@ You are a financial accountant.
 
 # Task Description Auditor:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+task_descr_auditor_15 = """
+You are given a segment from a company report.
+Your task is to extract, based only on explicit statements from the auditor’s opinion, which accounting standards, rules, practices, principles, or acts were used to prepare certain document types.
+
+Target document types (including close variants/extensions such as "... of the company/group", "company/group ...", "statutory ...", etc):
+- financial statements
+- consolidated financial statements
+- financial report
+- annual report
+
+Extraction Instructions:
+Extract only sentences that clearly state, in the auditor’s opinion, which accounting standard(s) were used for any target document type.
+Only include a document type if the auditor’s opinion explicitly mentions both the document type and an applied accounting standard/rule.
+Prioritize sentences beginning with “in our opinion” or "in my opinion".
+Extract the full name of each standard or rule, including any jurisdiction, act, provision, or issuer (e.g., “IFRS as adopted by the EU”, “Generally Accepted Accounting Principles in India”).
+If multiple standards are stated for a document type, extract them all.
+Ignore: prior period applications, remuneration reports, management or director opinions, or any inference not verbatim in the text.
+Exclude company names.
+
+Validation:
+All extracted document types, standards, and sentences must match exactly as in the text - do not infer, summarize, or paraphrase.
+
+Step-by-Step Instructions:
+1. Read the provided section carefully.
+2. For each target document type, find sentences in the auditor’s opinion that explicitly mention both the document type and the standard(s) it’s prepared in accordance with.
+3. For each target document type, extract the sentence and the full name(s) of the standard(s)/rule(s).
+4. Confirm all extracted content is explicit and compliant with the above rules.
+5. Discard any sentences that don’t fully meet requirements.
+6. Format output as below, grouping by document type.
+"""
+
+task_descr_notes_15 = """
+You are given a segment from a company report. 
+Your task is to extract, based only on explicit, non-auditor statements, which accounting standards, rules, practices, principles, or acts were used to prepare certain document types.
+
+Target document types (including close variants/extensions such as "... of the company/group", "company/group ...", "statutory ...", etc):
+- financial statements
+- consolidated financial statements
+- financial report
+- annual report
+
+Extraction Instructions:
+Extract only sentences that clearly state the accounting standard(s) applied to any target document type.
+Only include a document type if the segment explicitly mentions both the document type and an applied accounting standard/rule.
+Extract the full name of each standard or rule, including jurisdiction, act, provision, or issuer (e.g., “IFRS as adopted by the EU”, “Generally Accepted Accounting Principles in India”).
+If multiple standards are stated for a document type, extract them all.
+Ignore: prior period applications, remuneration reports, auditor opinions, or any inference not verbatim in the text.
+Exclude company names.
+
+Validation:
+All extracted document types, standards, and sentences must match exactly as in the text - do not infer, summarize, or paraphrase.
+
+Step-by-Step Instructions:
+1. Read the provided section carefully.
+2. For each target document type, find sentences explicitly mentioning both the document type and the standard(s) it’s prepared in accordance with.
+3. For each target document type, extract the sentence and the full name(s) of the standard(s)/rule(s).
+4. Confirm all extracted content is explicit and compliant with the above rules.
+5. Discard any sentences that don’t fully meet requirements.
+6. Format output as below, grouping by document type.
+"""
+
+# Answer Format :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+answer_format_8 = """
+Output Format (JSON, repeat block for each valid document type):
+{
+  "document_type_1": [
+    {
+      "sentence": "Sentence where document_type_1 is mentioned with accounting_standard_A.",
+      "terms": ["accounting_standard_A"]
+    },
+    {
+      "sentence": "Sentence where document_type_1 is mentioned with accounting_standard_B and accounting_standard_C.",
+      "terms": ["accounting_standard_B", "accounting_standard_C"]
+    }
+  ],
+  "document_type_2": [
+    {
+      "sentence": "Sentence where document_type_2 is mentioned with accounting_standard_D.",
+      "terms": ["accounting_standard_D"]
+    }
+  ]
+}
+"""
+
+# Instruction: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
+
+
+
+# Old
+
 task_descr_auditor_12 = """
 From a company report you are tasked to extract, according to the auditor's opinion, in compliance with which accounting standards/rules/practices/principles/acts the company prepared its document types. \
 Document types can be prepared in accordance with more than one accounting standard. Please also make sure to list which document type has been prepared according to which standards, multiple are possible. \
@@ -126,45 +219,6 @@ Before providing an answer, check whether you can find it within the provided te
 it is actually in the provided text and when you find a document type and term make sure it is actually in the sentence you find.\n
 """
 
-# Answer Format :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-answer_format_split_4 = """
-Provide your answer in the following JSON format:
-{1: {"sentence" : ["sentence from which you extracted the accounting standard, rule, or act"],
- "doc" : ["1st document type"],
- "term" : ["1st accounting standard/rule/act"; ...; "n-th accounting standard/rule/act"]},
- ...
-m: {"sentence" : ["sentence from which you extracted the accounting standard/rule/or act"],
- "doc" : ["m-th document type"],
- "term" : ["1st accounting standard/rule/act"; ...; "k-th accounting standard/rule/act"]}}
-"""
-
-answer_format_split_6 = """
-📤 Output Format (JSON, repeat inner block for each found and valid document type):
-{0: {  "sentence": ["<exact sentence from the text>"],
-  "doc": ["<document type mentioned>"],
-  "term": ["<accounting standard / rule / act>"; ...]},
- 1: {  "sentence": ["<exact sentence from the text>"],
-  "doc": ["<document type mentioned>"],
-  "term": ["<accounting standard / rule / act>"; ...]},
-  ...
-}
-"""
-
-answer_format_split_7 = """
-Output Format (JSON, repeat inner block for each found and valid document type)
-{0: {  "sentence": ["<exact sentence from the text>"],
-  "doc": ["<document type mentioned>"],
-  "term": ["<accounting standard / rule / act>"; ...]},
- 1: {  "sentence": ["<exact sentence from the text>"],
-  "doc": ["<document type mentioned>"],
-  "term": ["<accounting standard / rule / act>"; ...]},
-  ...
-}
-"""
-
-# Instruction: :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 instruction_6 = """
 Please follow these instructions:
 1) First read the section of the company's report provided.
@@ -211,4 +265,39 @@ instruction_9_notes = """
 4. Confirm that all extracted information is explicitly present in the source text and matches the requirements above.
 5. Discard any sentences that do not comply.
 6: Format your output as shown below.
+"""
+
+answer_format_split_4 = """
+Provide your answer in the following JSON format:
+{1: {"sentence" : ["sentence from which you extracted the accounting standard, rule, or act"],
+ "doc" : ["1st document type"],
+ "term" : ["1st accounting standard/rule/act"; ...; "n-th accounting standard/rule/act"]},
+ ...
+m: {"sentence" : ["sentence from which you extracted the accounting standard/rule/or act"],
+ "doc" : ["m-th document type"],
+ "term" : ["1st accounting standard/rule/act"; ...; "k-th accounting standard/rule/act"]}}
+"""
+
+answer_format_split_6 = """
+📤 Output Format (JSON, repeat inner block for each found and valid document type):
+{0: {  "sentence": ["<exact sentence from the text>"],
+  "doc": ["<document type mentioned>"],
+  "term": ["<accounting standard / rule / act>"; ...]},
+ 1: {  "sentence": ["<exact sentence from the text>"],
+  "doc": ["<document type mentioned>"],
+  "term": ["<accounting standard / rule / act>"; ...]},
+  ...
+}
+"""
+
+answer_format_split_7 = """
+Output Format (JSON, repeat inner block for each found and valid document type)
+{0: {  "sentence": ["<exact sentence from the text>"],
+  "doc": ["<document type mentioned>"],
+  "term": ["<accounting standard / rule / act>"; ...]},
+ 1: {  "sentence": ["<exact sentence from the text>"],
+  "doc": ["<document type mentioned>"],
+  "term": ["<accounting standard / rule / act>"; ...]},
+  ...
+}
 """
